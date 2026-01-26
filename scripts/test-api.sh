@@ -4,15 +4,17 @@
 echo "🧪 Testing Kong API Gateway PoC..."
 echo ""
 
-# Use external AKS URLs
-KONG_URL="https://kong.jim00.pd.test-rig.nl"
-PRODUCER_URL="https://producer.jim00.pd.test-rig.nl"
-CONSUMER_URL="https://consumer.jim00.pd.test-rig.nl"
+# Use external AKS URLs (can be overridden with environment variables)
+KONG_URL="${KONG_URL:-https://kong.jim00.pd.test-rig.nl}"
+PRODUCER_URL="${PRODUCER_URL:-https://producer.jim00.pd.test-rig.nl}"
+CONSUMER_URL="${CONSUMER_URL:-https://consumer.jim00.pd.test-rig.nl}"
 
 echo "Using external AKS URLs:"
 echo "  Kong: ${KONG_URL}"
 echo "  Producer: ${PRODUCER_URL}"
 echo "  Consumer: ${CONSUMER_URL}"
+echo ""
+echo "Tip: Set KONG_URL, PRODUCER_URL, or CONSUMER_URL environment variables to override defaults"
 
 echo ""
 echo "🔍 Testing Producer service..."
