@@ -1,0 +1,36 @@
+{{- if and .Values.kong.enabled .Values.kong.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: {{ .Values.kong.namespace }}
+  labels:
+    {{- include "apigw-poc.kong.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.global.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.tls.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.kong.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.kong.ingress.className }}
+  {{- if .Values.global.tls.enabled }}
+  tls:
+  - hosts:
+    - kong.{{ .Values.global.domainSuffix }}
+    secretName: kong-tls-cert
+  {{- end }}
+  rules:
+  - host: kong.{{ .Values.global.domainSuffix }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: {{ .Values.kong.service.ports.proxy }}
+{{- end }}
