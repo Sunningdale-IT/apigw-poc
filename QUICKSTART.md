@@ -6,11 +6,44 @@ This guide will help you get the Kong API Gateway PoC up and running on Azure AK
 
 - Azure Kubernetes Service (AKS) cluster with cert-manager installed
 - Docker Hub account (images hosted at https://hub.docker.com/repository/docker/jimleitch)
-- Docker installed
+- Docker installed (for building images)
 - kubectl configured to access your AKS cluster
+- Helm 3.x (for Helm deployment option)
 - (Optional) curl and jq for testing
 
 ## Quick Setup with Azure AKS
+
+### Option 1: Deploy with Helm (Recommended)
+
+```bash
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
+
+# 2. Install with Helm
+helm install apigw-poc ./helm-chart/apigw-poc
+
+# 3. Wait for ingress to get external IP
+kubectl get ingress -A -w
+
+# 4. Configure DNS records
+# Create A records pointing to the ingress external IP:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl
+# - consumer.jim00.pd.test-rig.nl
+
+# 5. Test the setup (after DNS propagation)
+./scripts/test-api.sh
+```
+
+For custom configuration:
+```bash
+# Install with custom domain
+helm install apigw-poc ./helm-chart/apigw-poc \
+  --set global.domainSuffix=yourdomain.com
+```
+
+### Option 2: Deploy with kubectl (Manual)
 
 ```bash
 # 1. Build and push Docker images (requires Docker Hub login)
@@ -90,6 +123,16 @@ kubectl logs -n consumer -l app=consumer -f
 
 ## Cleanup
 
+### If deployed with Helm:
+```bash
+# Uninstall the Helm release
+helm uninstall apigw-poc
+
+# Optionally delete the namespaces
+kubectl delete namespace producer consumer kong
+```
+
+### If deployed with kubectl:
 ```bash
 # Remove all resources
 ./scripts/cleanup.sh
