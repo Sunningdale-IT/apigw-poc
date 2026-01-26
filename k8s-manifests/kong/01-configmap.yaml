@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: kong
+data:
+  # Kong configuration - declarative config mode
+  kong.yaml: |
+    _format_version: "3.0"
+    _transform: true
+    
+    services:
+    - name: producer-service
+      url: http://producer-service.producer:80
+      routes:
+      - name: producer-route
+        paths:
+        - /producer
+        strip_path: true
+        
+    - name: consumer-service
+      url: http://consumer-service.consumer:80
+      routes:
+      - name: consumer-route
+        paths:
+        - /consumer
+        strip_path: true
