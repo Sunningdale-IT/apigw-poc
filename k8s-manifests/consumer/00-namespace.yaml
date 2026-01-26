@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: consumer
+  labels:
+    name: consumer
+    app: api-gateway-poc
