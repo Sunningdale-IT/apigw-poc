@@ -1,0 +1,19 @@
+{{- if .Values.consumer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer-service
+  namespace: {{ .Values.consumer.namespace }}
+  labels:
+    {{- include "apigw-poc.consumer.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.consumer.service.type }}
+  ports:
+  - port: {{ .Values.consumer.service.port }}
+    targetPort: {{ .Values.consumer.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ .Values.consumer.name }}
+{{- end }}

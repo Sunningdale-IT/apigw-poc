@@ -84,43 +84,71 @@ This PoC demonstrates how Kong API Gateway simplifies the integration between mi
 ### Prerequisites
 
 - Azure Kubernetes Service (AKS) cluster with cert-manager installed
-- Azure Container Registry (ACR) or Docker Hub account
-- Docker
+- Docker Hub account (images hosted at https://hub.docker.com/repository/docker/jimleitch)
+- Docker (for building images)
 - kubectl configured to access your AKS cluster
+- Helm 3.x (for Helm deployment method)
 - curl and jq (optional, for testing)
 
 ### Deployment Steps
 
+#### Option 1: Deploy with Helm (Recommended)
+
 ```bash
-# 1. Build Docker images
-./scripts/build-images.sh
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
 
-# 2. Tag and push images to your container registry
-# For Azure Container Registry:
-docker tag producer-app:latest <your-acr>.azurecr.io/producer-app:latest
-docker tag consumer-app:latest <your-acr>.azurecr.io/consumer-app:latest
-docker push <your-acr>.azurecr.io/producer-app:latest
-docker push <your-acr>.azurecr.io/consumer-app:latest
+# 2. Install with Helm
+helm install apigw-poc ./helm-chart/apigw-poc
 
-# 3. Update image references in deployment files
-# Edit k8s-manifests/producer/01-deployment.yaml
-# Edit k8s-manifests/consumer/01-deployment.yaml
-# Update image: producer-app:latest to image: <your-acr>.azurecr.io/producer-app:latest
-# Update image: consumer-app:latest to image: <your-acr>.azurecr.io/consumer-app:latest
-
-# 4. Deploy to AKS
-./scripts/deploy.sh
-
-# 5. Wait for external IPs to be assigned
+# 3. Wait for external IPs to be assigned
 kubectl get ingress -A
 
-# 6. Configure DNS records
+# 4. Configure DNS records
 # Point the following domains to the ingress external IPs:
 # - kong.jim00.pd.test-rig.nl
 # - producer.jim00.pd.test-rig.nl
 # - consumer.jim00.pd.test-rig.nl
 
-# 7. Test the setup (after DNS propagation)
+# 5. Test the setup (after DNS propagation)
+./scripts/test-api.sh
+```
+
+For custom configuration with Helm:
+```bash
+# Install with custom domain
+helm install apigw-poc ./helm-chart/apigw-poc \
+  --set global.domainSuffix=yourdomain.com
+
+# Install with custom image tags
+helm install apigw-poc ./helm-chart/apigw-poc \
+  --set producer.image.tag=v1.0.0 \
+  --set consumer.image.tag=v1.0.0
+```
+
+See [helm-chart/apigw-poc/README.md](helm-chart/apigw-poc/README.md) for full Helm documentation.
+
+#### Option 2: Deploy with kubectl (Manual)
+
+```bash
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
+
+# 2. Deploy to AKS
+./scripts/deploy.sh
+
+# 3. Wait for external IPs to be assigned
+kubectl get ingress -A
+
+# 4. Configure DNS records
+# Point the following domains to the ingress external IPs:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl
+# - consumer.jim00.pd.test-rig.nl
+
+# 5. Test the setup (after DNS propagation)
 ./scripts/test-api.sh
 ```
 
@@ -254,7 +282,7 @@ Both applications include dual admin interfaces:
 │   ├── manage.py          # Django management script
 │   ├── Dockerfile         # Docker image definition
 │   └── requirements.txt   # Python dependencies
-├── k8s-manifests/        # Kubernetes manifests
+├── k8s-manifests/        # Kubernetes manifests (for kubectl deployment)
 │   ├── kong/            # Kong Gateway configuration
 │   │   ├── 00-namespace.yaml
 │   │   ├── 01-configmap.yaml
@@ -271,12 +299,25 @@ Both applications include dual admin interfaces:
 │       ├── 01-deployment.yaml
 │       ├── 02-service.yaml
 │       └── 03-ingress.yaml
+├── helm-chart/           # Helm chart for deployment
+│   └── apigw-poc/       # Helm chart package
+│       ├── Chart.yaml   # Chart metadata
+│       ├── values.yaml  # Default configuration values
+│       ├── README.md    # Helm chart documentation
+│       └── templates/   # Kubernetes resource templates
+│           ├── _helpers.tpl
+│           ├── *-namespace.yaml
+│           ├── *-deployment.yaml
+│           ├── *-service.yaml
+│           ├── *-ingress.yaml
+│           └── kong-configmap.yaml
 ├── scripts/              # Utility scripts
-│   ├── build-images.sh   # Build Docker images
-│   ├── deploy.sh         # Deploy to Kubernetes
-│   ├── test-api.sh       # Test the deployment
-│   ├── status.sh         # Check deployment status
-│   └── cleanup.sh        # Remove all resources
+│   ├── build-images.sh    # Build Docker images
+│   ├── build-and-push.sh  # Build and push to Docker Hub
+│   ├── deploy.sh          # Deploy to Kubernetes with kubectl
+│   ├── test-api.sh        # Test the deployment
+│   ├── status.sh          # Check deployment status
+│   └── cleanup.sh         # Remove all resources
 └── README.md            # This file
 ```
 
@@ -373,7 +414,18 @@ kubectl get all -n consumer
 
 To remove all deployed resources:
 
+### If deployed with Helm:
 ```bash
+# Uninstall the Helm release
+helm uninstall apigw-poc
+
+# Optionally delete the namespaces
+kubectl delete namespace producer consumer kong
+```
+
+### If deployed with kubectl:
+```bash
+# Remove all resources
 ./scripts/cleanup.sh
 ```
 

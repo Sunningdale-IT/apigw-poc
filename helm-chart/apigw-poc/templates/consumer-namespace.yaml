@@ -1,0 +1,10 @@
+{{- if .Values.consumer.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.consumer.namespace }}
+  labels:
+    {{- include "apigw-poc.labels" . | nindent 4 }}
+    component: consumer
+{{- end }}
