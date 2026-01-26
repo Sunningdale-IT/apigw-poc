@@ -83,114 +83,93 @@ This PoC demonstrates how Kong API Gateway simplifies the integration between mi
 
 ### Prerequisites
 
-- Kubernetes cluster (Minikube, kind, or any K8s cluster)
+- Azure Kubernetes Service (AKS) cluster with cert-manager installed
+- Azure Container Registry (ACR) or Docker Hub account
 - Docker
-- kubectl configured to access your cluster
+- kubectl configured to access your AKS cluster
 - curl and jq (optional, for testing)
 
-### Option 1: Using Minikube
+### Deployment Steps
 
 ```bash
-# Start Minikube
-minikube start
-
-# Set Docker environment to use Minikube's Docker daemon
-eval $(minikube docker-env)
-
-# Build Docker images
+# 1. Build Docker images
 ./scripts/build-images.sh
 
-# Deploy to Kubernetes
+# 2. Tag and push images to your container registry
+# For Azure Container Registry:
+docker tag producer-app:latest <your-acr>.azurecr.io/producer-app:latest
+docker tag consumer-app:latest <your-acr>.azurecr.io/consumer-app:latest
+docker push <your-acr>.azurecr.io/producer-app:latest
+docker push <your-acr>.azurecr.io/consumer-app:latest
+
+# 3. Update image references in deployment files
+# Edit k8s-manifests/producer/01-deployment.yaml
+# Edit k8s-manifests/consumer/01-deployment.yaml
+# Update image: producer-app:latest to image: <your-acr>.azurecr.io/producer-app:latest
+# Update image: consumer-app:latest to image: <your-acr>.azurecr.io/consumer-app:latest
+
+# 4. Deploy to AKS
 ./scripts/deploy.sh
 
-# Test the setup
-./scripts/test-api.sh
+# 5. Wait for external IPs to be assigned
+kubectl get ingress -A
 
-# Access admin interfaces
-minikube service kong-proxy -n kong --url
-# Then access /producer/admin and /consumer/admin
-```
+# 6. Configure DNS records
+# Point the following domains to the ingress external IPs:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl
+# - consumer.jim00.pd.test-rig.nl
 
-### Option 2: Using kind
-
-```bash
-# Create a kind cluster
-kind create cluster
-
-# Build Docker images
-./scripts/build-images.sh
-
-# Load images into kind
-./scripts/load-images-kind.sh
-
-# Deploy to Kubernetes
-./scripts/deploy.sh
-
-# Test the setup (uses localhost:30080)
+# 7. Test the setup (after DNS propagation)
 ./scripts/test-api.sh
 ```
 
-### Option 3: Using any Kubernetes cluster
+### Note on cert-manager
 
-```bash
-# Build and push images to your registry
-docker build -t your-registry/producer-app:latest ./producer-app
-docker build -t your-registry/consumer-app:latest ./consumer-app
-docker push your-registry/producer-app:latest
-docker push your-registry/consumer-app:latest
+This deployment assumes that cert-manager is already installed on your AKS cluster with a ClusterIssuer named `letsencrypt-prod`. The ingress configurations will automatically request TLS certificates from Let's Encrypt.
 
-# Update image names in k8s-manifests/*/01-deployment.yaml
-
-# Deploy to Kubernetes
-./scripts/deploy.sh
-
-# Test the setup
-./scripts/test-api.sh
-```
+If you need to install cert-manager, refer to the [cert-manager documentation](https://cert-manager.io/docs/installation/)
 
 ## 📊 Accessing the Applications
 
-### Via NodePort (kind, Minikube with --driver=docker)
+All services are accessible via HTTPS using external domain names:
 
-- **Producer Custom Admin**: `http://localhost:30080/producer/admin-dashboard`
-- **Producer Django Admin**: `http://localhost:30080/producer/admin`
-- **Consumer Custom Admin**: `http://localhost:30080/consumer/admin-dashboard`
-- **Consumer Django Admin**: `http://localhost:30080/consumer/admin`
-- **Kong Proxy**: `http://localhost:30080`
-- **Kong Admin**: `http://localhost:30081`
+- **Kong Gateway**: `https://kong.jim00.pd.test-rig.nl`
+- **Producer Custom Admin**: `https://producer.jim00.pd.test-rig.nl/admin-dashboard`
+- **Producer Django Admin**: `https://producer.jim00.pd.test-rig.nl/admin`
+- **Consumer Custom Admin**: `https://consumer.jim00.pd.test-rig.nl/admin-dashboard`
+- **Consumer Django Admin**: `https://consumer.jim00.pd.test-rig.nl/admin`
 
-### Via Port Forwarding (alternative)
+### Via Kong Gateway Routes
 
-```bash
-# Forward Kong proxy port
-kubectl port-forward -n kong svc/kong-proxy 8000:8000
+You can also access services through Kong:
 
-# Access applications
-# Producer Custom Admin: http://localhost:8000/producer/admin-dashboard
-# Producer Django Admin: http://localhost:8000/producer/admin
-# Consumer Custom Admin: http://localhost:8000/consumer/admin-dashboard
-# Consumer Django Admin: http://localhost:8000/consumer/admin
-```
+- **Producer via Kong**: `https://kong.jim00.pd.test-rig.nl/producer/*`
+- **Consumer via Kong**: `https://kong.jim00.pd.test-rig.nl/consumer/*`
 
 ## 🧪 Testing the Setup
 
 ### Manual Testing
 
 ```bash
-# Check health of Producer via Kong
-curl http://localhost:30080/producer/health
+# Check health of Producer
+curl https://producer.jim00.pd.test-rig.nl/health
 
-# Check health of Consumer via Kong
-curl http://localhost:30080/consumer/health
+# Check health of Consumer
+curl https://consumer.jim00.pd.test-rig.nl/health
 
 # Get data from Producer
-curl http://localhost:30080/producer/api/data
+curl https://producer.jim00.pd.test-rig.nl/api/data
 
 # Trigger Consumer to fetch from Producer (via Kong)
-curl http://localhost:30080/consumer/api/consume
+curl https://consumer.jim00.pd.test-rig.nl/api/consume
 
 # Trigger Producer to generate new data (from Consumer via Kong)
-curl -X POST http://localhost:30080/consumer/api/trigger-produce
+curl -X POST https://consumer.jim00.pd.test-rig.nl/api/trigger-produce
+
+# Test via Kong Gateway routes
+curl https://kong.jim00.pd.test-rig.nl/producer/health
+curl https://kong.jim00.pd.test-rig.nl/consumer/health
 ```
 
 ### Automated Testing
@@ -280,26 +259,54 @@ Both applications include dual admin interfaces:
 │   │   ├── 00-namespace.yaml
 │   │   ├── 01-configmap.yaml
 │   │   ├── 02-deployment.yaml
-│   │   └── 03-service.yaml
+│   │   ├── 03-service.yaml
+│   │   └── 04-ingress.yaml
 │   ├── producer/        # Producer service manifests
 │   │   ├── 00-namespace.yaml
 │   │   ├── 01-deployment.yaml
-│   │   └── 02-service.yaml
+│   │   ├── 02-service.yaml
+│   │   └── 03-ingress.yaml
 │   └── consumer/        # Consumer service manifests
 │       ├── 00-namespace.yaml
 │       ├── 01-deployment.yaml
-│       └── 02-service.yaml
+│       ├── 02-service.yaml
+│       └── 03-ingress.yaml
 ├── scripts/              # Utility scripts
 │   ├── build-images.sh   # Build Docker images
 │   ├── deploy.sh         # Deploy to Kubernetes
 │   ├── test-api.sh       # Test the deployment
 │   ├── status.sh         # Check deployment status
-│   ├── cleanup.sh        # Remove all resources
-│   └── load-images-kind.sh  # Load images to kind
+│   └── cleanup.sh        # Remove all resources
 └── README.md            # This file
 ```
 
 ## 🔧 Configuration
+
+### Ingress and External Access
+
+The deployment uses Kubernetes Ingress with cert-manager for external HTTPS access:
+
+**External URLs:**
+- Kong Gateway: `https://kong.jim00.pd.test-rig.nl`
+- Producer Service: `https://producer.jim00.pd.test-rig.nl`
+- Consumer Service: `https://consumer.jim00.pd.test-rig.nl`
+
+Each service has its own ingress configuration in `k8s-manifests/*/03-ingress.yaml` that:
+- Configures TLS/SSL using cert-manager
+- Requests certificates from Let's Encrypt
+- Routes traffic to the appropriate service
+
+**DNS Configuration:**
+You need to create DNS A records pointing to your ingress controller's external IP:
+```bash
+# Get the ingress external IP
+kubectl get ingress -A
+
+# Create DNS records pointing to this IP:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl  
+# - consumer.jim00.pd.test-rig.nl
+```
 
 ### Kong Routes
 

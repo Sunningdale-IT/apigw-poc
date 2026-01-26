@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: kong
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - kong.jim00.pd.test-rig.nl
+    secretName: kong-tls-cert
+  rules:
+  - host: kong.jim00.pd.test-rig.nl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8000

@@ -1,60 +1,59 @@
 # Quick Start Guide
 
-This guide will help you get the Kong API Gateway PoC up and running quickly.
+This guide will help you get the Kong API Gateway PoC up and running on Azure AKS.
 
 ## Prerequisites
 
-- Kubernetes cluster (Minikube, kind, or any K8s cluster)
+- Azure Kubernetes Service (AKS) cluster with cert-manager installed
+- Azure Container Registry (ACR) or Docker Hub account
 - Docker installed
-- kubectl configured
+- kubectl configured to access your AKS cluster
 - (Optional) curl and jq for testing
 
-## Quick Setup with kind
+## Quick Setup with Azure AKS
 
 ```bash
-# 1. Create a kind cluster
-kind create cluster
-
-# 2. Build Docker images
+# 1. Build Docker images
 ./scripts/build-images.sh
 
-# 3. Load images into kind
-./scripts/load-images-kind.sh
+# 2. Tag and push to Azure Container Registry
+ACR_NAME="<your-acr-name>"
+docker tag producer-app:latest ${ACR_NAME}.azurecr.io/producer-app:latest
+docker tag consumer-app:latest ${ACR_NAME}.azurecr.io/consumer-app:latest
+docker push ${ACR_NAME}.azurecr.io/producer-app:latest
+docker push ${ACR_NAME}.azurecr.io/consumer-app:latest
 
-# 4. Deploy everything
+# 3. Update deployment manifests with your ACR images
+# Edit k8s-manifests/producer/01-deployment.yaml
+# Edit k8s-manifests/consumer/01-deployment.yaml
+# Change: image: producer-app:latest 
+# To: image: <your-acr>.azurecr.io/producer-app:latest
+
+# 4. Deploy to AKS
 ./scripts/deploy.sh
 
-# 5. Test the setup
-./scripts/test-api.sh
-```
+# 5. Wait for ingress to get external IP
+kubectl get ingress -A -w
 
-## Quick Setup with Minikube
+# 6. Configure DNS records
+# Create A records pointing to the ingress external IP:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl
+# - consumer.jim00.pd.test-rig.nl
 
-```bash
-# 1. Start Minikube
-minikube start
-
-# 2. Use Minikube's Docker daemon
-eval $(minikube docker-env)
-
-# 3. Build Docker images
-./scripts/build-images.sh
-
-# 4. Deploy everything
-./scripts/deploy.sh
-
-# 5. Test the setup
+# 7. Test the setup (after DNS propagation)
 ./scripts/test-api.sh
 ```
 
 ## Accessing Admin Interfaces
 
-After deployment, access the admin interfaces at:
+After deployment and DNS configuration, access the admin interfaces at:
 
-- **Producer Custom Dashboard**: http://localhost:30080/producer/admin-dashboard
-- **Producer Django Admin**: http://localhost:30080/producer/admin  
-- **Consumer Custom Dashboard**: http://localhost:30080/consumer/admin-dashboard
-- **Consumer Django Admin**: http://localhost:30080/consumer/admin
+- **Producer Custom Dashboard**: https://producer.jim00.pd.test-rig.nl/admin-dashboard
+- **Producer Django Admin**: https://producer.jim00.pd.test-rig.nl/admin  
+- **Consumer Custom Dashboard**: https://consumer.jim00.pd.test-rig.nl/admin-dashboard
+- **Consumer Django Admin**: https://consumer.jim00.pd.test-rig.nl/admin
+- **Kong Gateway**: https://kong.jim00.pd.test-rig.nl
 
 ## Testing the API
 
@@ -62,31 +61,31 @@ After deployment, access the admin interfaces at:
 
 ```bash
 # Producer health
-curl http://localhost:30080/producer/health
+curl https://producer.jim00.pd.test-rig.nl/health
 
 # Consumer health
-curl http://localhost:30080/consumer/health
+curl https://consumer.jim00.pd.test-rig.nl/health
 ```
 
 ### Produce Data
 
 ```bash
 # Generate new data via Producer
-curl -X POST http://localhost:30080/producer/api/produce
+curl -X POST https://producer.jim00.pd.test-rig.nl/api/produce
 ```
 
 ### Consume Data
 
 ```bash
 # Consumer fetches data from Producer via Kong
-curl http://localhost:30080/consumer/api/consume
+curl https://consumer.jim00.pd.test-rig.nl/api/consume
 ```
 
 ### Trigger Producer from Consumer
 
 ```bash
 # Consumer tells Producer to generate data (via Kong)
-curl -X POST http://localhost:30080/consumer/api/trigger-produce
+curl -X POST https://consumer.jim00.pd.test-rig.nl/api/trigger-produce
 ```
 
 ## Viewing Status
@@ -120,48 +119,73 @@ kubectl get pods -n consumer
 
 # Describe problematic pod
 kubectl describe pod <pod-name> -n <namespace>
+
+# Check logs
+kubectl logs <pod-name> -n <namespace>
 ```
 
 ### Can't access services
 
 ```bash
-# For Minikube users
-minikube service kong-proxy -n kong --url
+# Check ingress status
+kubectl get ingress -A
 
-# For kind/Docker Desktop
-# Services are accessible at localhost:30080
+# Verify DNS records are pointing to the correct IP
+nslookup kong.jim00.pd.test-rig.nl
+nslookup producer.jim00.pd.test-rig.nl
+nslookup consumer.jim00.pd.test-rig.nl
+
+# Check cert-manager certificate status
+kubectl get certificate -A
+kubectl describe certificate -n kong kong-tls-cert
 ```
 
 ### Images not found
 
 ```bash
-# For kind - ensure images are loaded
-./scripts/load-images-kind.sh
+# Verify images are in your container registry
+az acr repository list --name <your-acr-name>
 
-# For Minikube - ensure you're using Minikube's Docker
-eval $(minikube docker-env)
-./scripts/build-images.sh
+# Ensure AKS has access to ACR
+az aks update -n <aks-cluster-name> -g <resource-group> --attach-acr <acr-name>
+```
+
+### TLS/Certificate Issues
+
+```bash
+# Check certificate status
+kubectl get certificate -A
+kubectl describe certificate -n kong kong-tls-cert
+
+# Check cert-manager logs
+kubectl logs -n cert-manager -l app=cert-manager
+
+# Verify ClusterIssuer exists
+kubectl get clusterissuer
 ```
 
 ## Architecture Overview
 
 ```
-User/Client
+User/Client (External)
+    ↓ HTTPS
+Ingress Controller (nginx)
     ↓
-Kong Gateway (port 30080)
-    ↓
-    ├─→ /producer/* → Producer Service (namespace: producer)
-    └─→ /consumer/* → Consumer Service (namespace: consumer)
-                          ↓
-                     (calls Producer via Kong)
+    ├─→ kong.jim00.pd.test-rig.nl → Kong Gateway (namespace: kong)
+    ├─→ producer.jim00.pd.test-rig.nl → Producer Service (namespace: producer)  
+    └─→ consumer.jim00.pd.test-rig.nl → Consumer Service (namespace: consumer)
+                                              ↓
+                                         (calls Producer via Kong)
 ```
 
 ## Key Benefits Demonstrated
 
-1. **Centralized Routing**: All traffic flows through Kong
-2. **Service Discovery**: Services use Kong routes, not direct URLs
-3. **Namespace Isolation**: Each service in its own namespace
-4. **Easy Configuration**: Declarative Kong config via ConfigMap
-5. **Admin Visibility**: Dual admin interfaces per service
+1. **External Access**: All services accessible via HTTPS with proper domain names
+2. **Centralized Routing**: Traffic flows through Kong and Ingress
+3. **Service Discovery**: Services use Kong routes, not direct URLs
+4. **Namespace Isolation**: Each service in its own namespace
+5. **TLS/SSL**: Automatic certificate management via cert-manager
+6. **Easy Configuration**: Declarative Kong config via ConfigMap
+7. **Admin Visibility**: Dual admin interfaces per service
 
 For more details, see the main [README.md](README.md)
