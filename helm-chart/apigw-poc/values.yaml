@@ -61,8 +61,7 @@ producer:
     enabled: true
     className: nginx
     # Host will be: producer.{{ .Values.global.domainSuffix }}
-    annotations:
-      cert-manager.io/cluster-issuer: "{{ .Values.global.tls.clusterIssuer }}"
+    annotations: {}
 
 # Consumer application configuration
 consumer:
@@ -114,8 +113,7 @@ consumer:
     enabled: true
     className: nginx
     # Host will be: consumer.{{ .Values.global.domainSuffix }}
-    annotations:
-      cert-manager.io/cluster-issuer: "{{ .Values.global.tls.clusterIssuer }}"
+    annotations: {}
 
 # Kong API Gateway configuration
 kong:
@@ -179,5 +177,4 @@ kong:
     enabled: true
     className: nginx
     # Host will be: kong.{{ .Values.global.domainSuffix }}
-    annotations:
-      cert-manager.io/cluster-issuer: "{{ .Values.global.tls.clusterIssuer }}"
+    annotations: {}
