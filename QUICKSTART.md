@@ -5,43 +5,64 @@ This guide will help you get the Kong API Gateway PoC up and running on Azure AK
 ## Prerequisites
 
 - Azure Kubernetes Service (AKS) cluster with cert-manager installed
-- Azure Container Registry (ACR) or Docker Hub account
-- Docker installed
+- Docker Hub account (images hosted at https://hub.docker.com/repository/docker/jimleitch)
+- Docker installed (for building images)
 - kubectl configured to access your AKS cluster
+- Helm 3.x (for Helm deployment option)
 - (Optional) curl and jq for testing
 
 ## Quick Setup with Azure AKS
 
+### Option 1: Deploy with Helm (Recommended)
+
 ```bash
-# 1. Build Docker images
-./scripts/build-images.sh
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
 
-# 2. Tag and push to Azure Container Registry
-ACR_NAME="<your-acr-name>"
-docker tag producer-app:latest ${ACR_NAME}.azurecr.io/producer-app:latest
-docker tag consumer-app:latest ${ACR_NAME}.azurecr.io/consumer-app:latest
-docker push ${ACR_NAME}.azurecr.io/producer-app:latest
-docker push ${ACR_NAME}.azurecr.io/consumer-app:latest
+# 2. Install with Helm
+helm install apigw-poc ./helm-chart/apigw-poc
 
-# 3. Update deployment manifests with your ACR images
-# Edit k8s-manifests/producer/01-deployment.yaml
-# Edit k8s-manifests/consumer/01-deployment.yaml
-# Change: image: producer-app:latest 
-# To: image: <your-acr>.azurecr.io/producer-app:latest
-
-# 4. Deploy to AKS
-./scripts/deploy.sh
-
-# 5. Wait for ingress to get external IP
+# 3. Wait for ingress to get external IP
 kubectl get ingress -A -w
 
-# 6. Configure DNS records
+# 4. Configure DNS records
 # Create A records pointing to the ingress external IP:
 # - kong.jim00.pd.test-rig.nl
 # - producer.jim00.pd.test-rig.nl
 # - consumer.jim00.pd.test-rig.nl
 
-# 7. Test the setup (after DNS propagation)
+# 5. Test the setup (after DNS propagation)
+./scripts/test-api.sh
+```
+
+For custom configuration:
+```bash
+# Install with custom domain
+helm install apigw-poc ./helm-chart/apigw-poc \
+  --set global.domainSuffix=yourdomain.com
+```
+
+### Option 2: Deploy with kubectl (Manual)
+
+```bash
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
+
+# 2. Deploy to AKS
+./scripts/deploy.sh
+
+# 3. Wait for ingress to get external IP
+kubectl get ingress -A -w
+
+# 4. Configure DNS records
+# Create A records pointing to the ingress external IP:
+# - kong.jim00.pd.test-rig.nl
+# - producer.jim00.pd.test-rig.nl
+# - consumer.jim00.pd.test-rig.nl
+
+# 5. Test the setup (after DNS propagation)
 ./scripts/test-api.sh
 ```
 
@@ -102,6 +123,16 @@ kubectl logs -n consumer -l app=consumer -f
 
 ## Cleanup
 
+### If deployed with Helm:
+```bash
+# Uninstall the Helm release
+helm uninstall apigw-poc
+
+# Optionally delete the namespaces
+kubectl delete namespace producer consumer kong
+```
+
+### If deployed with kubectl:
 ```bash
 # Remove all resources
 ./scripts/cleanup.sh
@@ -143,11 +174,13 @@ kubectl describe certificate -n kong kong-tls-cert
 ### Images not found
 
 ```bash
-# Verify images are in your container registry
-az acr repository list --name <your-acr-name>
+# Verify images are available on Docker Hub
+# Visit https://hub.docker.com/r/jimleitch/producer-app
+# Visit https://hub.docker.com/r/jimleitch/consumer-app
 
-# Ensure AKS has access to ACR
-az aks update -n <aks-cluster-name> -g <resource-group> --attach-acr <acr-name>
+# Or pull them directly to test
+docker pull jimleitch/producer-app:latest
+docker pull jimleitch/consumer-app:latest
 ```
 
 ### TLS/Certificate Issues

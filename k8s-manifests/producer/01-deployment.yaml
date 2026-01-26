@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: producer
-        image: producer-app:latest
-        imagePullPolicy: IfNotPresent
+        image: jimleitch/producer-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
           name: http
