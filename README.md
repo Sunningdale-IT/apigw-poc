@@ -84,7 +84,7 @@ This PoC demonstrates how Kong API Gateway simplifies the integration between mi
 ### Prerequisites
 
 - Azure Kubernetes Service (AKS) cluster with cert-manager installed
-- Azure Container Registry (ACR) or Docker Hub account
+- Docker Hub account (images hosted at https://hub.docker.com/repository/docker/jimleitch)
 - Docker
 - kubectl configured to access your AKS cluster
 - curl and jq (optional, for testing)
@@ -92,35 +92,23 @@ This PoC demonstrates how Kong API Gateway simplifies the integration between mi
 ### Deployment Steps
 
 ```bash
-# 1. Build Docker images
-./scripts/build-images.sh
+# 1. Build and push Docker images (requires Docker Hub login)
+docker login
+./scripts/build-and-push.sh
 
-# 2. Tag and push images to your container registry
-# For Azure Container Registry:
-docker tag producer-app:latest <your-acr>.azurecr.io/producer-app:latest
-docker tag consumer-app:latest <your-acr>.azurecr.io/consumer-app:latest
-docker push <your-acr>.azurecr.io/producer-app:latest
-docker push <your-acr>.azurecr.io/consumer-app:latest
-
-# 3. Update image references in deployment files
-# Edit k8s-manifests/producer/01-deployment.yaml
-# Edit k8s-manifests/consumer/01-deployment.yaml
-# Update image: producer-app:latest to image: <your-acr>.azurecr.io/producer-app:latest
-# Update image: consumer-app:latest to image: <your-acr>.azurecr.io/consumer-app:latest
-
-# 4. Deploy to AKS
+# 2. Deploy to AKS
 ./scripts/deploy.sh
 
-# 5. Wait for external IPs to be assigned
+# 3. Wait for external IPs to be assigned
 kubectl get ingress -A
 
-# 6. Configure DNS records
+# 4. Configure DNS records
 # Point the following domains to the ingress external IPs:
 # - kong.jim00.pd.test-rig.nl
 # - producer.jim00.pd.test-rig.nl
 # - consumer.jim00.pd.test-rig.nl
 
-# 7. Test the setup (after DNS propagation)
+# 5. Test the setup (after DNS propagation)
 ./scripts/test-api.sh
 ```
 

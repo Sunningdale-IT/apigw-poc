@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: consumer
-        image: consumer-app:latest
-        imagePullPolicy: IfNotPresent
+        image: jimleitch/consumer-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5001
           name: http
