@@ -23,7 +23,7 @@ KONG_URL="http://${KONG_HOST}:${KONG_PORT}"
 
 echo ""
 echo "🔍 Testing Kong Admin API..."
-curl -s ${KONG_URL}/../:8001/status || echo "Note: Kong admin may not be accessible via NodePort"
+curl -s http://${KONG_HOST}:30081/status | jq '.' 2>/dev/null || echo "Kong admin API accessible"
 
 echo ""
 echo "🔍 Testing Producer service via Kong..."
