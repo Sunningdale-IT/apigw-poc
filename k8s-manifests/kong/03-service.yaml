@@ -6,17 +6,15 @@ metadata:
   labels:
     app: kong-proxy
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
   - name: proxy
     port: 8000
     targetPort: 8000
     protocol: TCP
-    nodePort: 30080
   - name: admin
     port: 8001
     targetPort: 8001
     protocol: TCP
-    nodePort: 30081
   selector:
     app: kong-proxy
