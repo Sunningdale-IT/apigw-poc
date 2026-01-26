@@ -4,70 +4,60 @@
 echo "🧪 Testing Kong API Gateway PoC..."
 echo ""
 
-# Detect Kubernetes environment
-if kubectl cluster-info | grep -q "kind"; then
-    KONG_HOST="localhost"
-    KONG_PORT="30080"
-    echo "Detected kind cluster - using localhost:30080"
-elif kubectl cluster-info | grep -q "minikube"; then
-    KONG_HOST=$(minikube ip)
-    KONG_PORT="30080"
-    echo "Detected Minikube cluster - using $(minikube ip):30080"
-else
-    KONG_HOST="localhost"
-    KONG_PORT="30080"
-    echo "Using localhost:30080 (adjust if needed for your cluster)"
-fi
+# Use external AKS URLs (can be overridden with environment variables)
+KONG_URL="${KONG_URL:-https://kong.jim00.pd.test-rig.nl}"
+PRODUCER_URL="${PRODUCER_URL:-https://producer.jim00.pd.test-rig.nl}"
+CONSUMER_URL="${CONSUMER_URL:-https://consumer.jim00.pd.test-rig.nl}"
 
-KONG_URL="http://${KONG_HOST}:${KONG_PORT}"
+echo "Using external AKS URLs:"
+echo "  Kong: ${KONG_URL}"
+echo "  Producer: ${PRODUCER_URL}"
+echo "  Consumer: ${CONSUMER_URL}"
+echo ""
+echo "Tip: Set KONG_URL, PRODUCER_URL, or CONSUMER_URL environment variables to override defaults"
 
 echo ""
-echo "🔍 Testing Kong Admin API..."
-curl -s http://${KONG_HOST}:30081/status | jq '.' 2>/dev/null || echo "Kong admin API accessible"
-
-echo ""
-echo "🔍 Testing Producer service via Kong..."
-echo "GET ${KONG_URL}/producer/health"
-curl -s ${KONG_URL}/producer/health | jq '.' || curl -s ${KONG_URL}/producer/health
+echo "🔍 Testing Producer service..."
+echo "GET ${PRODUCER_URL}/health"
+curl -s ${PRODUCER_URL}/health | jq '.' || curl -s ${PRODUCER_URL}/health
 echo ""
 
 echo ""
 echo "📊 Getting all data from Producer..."
-echo "GET ${KONG_URL}/producer/api/data"
-curl -s ${KONG_URL}/producer/api/data | jq '.' || curl -s ${KONG_URL}/producer/api/data
+echo "GET ${PRODUCER_URL}/api/data"
+curl -s ${PRODUCER_URL}/api/data | jq '.' || curl -s ${PRODUCER_URL}/api/data
 echo ""
 
 echo ""
-echo "🔍 Testing Consumer service via Kong..."
-echo "GET ${KONG_URL}/consumer/health"
-curl -s ${KONG_URL}/consumer/health | jq '.' || curl -s ${KONG_URL}/consumer/health
+echo "🔍 Testing Consumer service..."
+echo "GET ${CONSUMER_URL}/health"
+curl -s ${CONSUMER_URL}/health | jq '.' || curl -s ${CONSUMER_URL}/health
 echo ""
 
 echo ""
 echo "🎯 Triggering Producer to create new data via Consumer..."
-echo "POST ${KONG_URL}/consumer/api/trigger-produce"
-curl -X POST -s ${KONG_URL}/consumer/api/trigger-produce | jq '.' || curl -X POST -s ${KONG_URL}/consumer/api/trigger-produce
+echo "POST ${CONSUMER_URL}/api/trigger-produce"
+curl -X POST -s ${CONSUMER_URL}/api/trigger-produce | jq '.' || curl -X POST -s ${CONSUMER_URL}/api/trigger-produce
 echo ""
 
 echo ""
 echo "📥 Consumer fetching data from Producer via Kong..."
-echo "GET ${KONG_URL}/consumer/api/consume"
-curl -s ${KONG_URL}/consumer/api/consume | jq '.' || curl -s ${KONG_URL}/consumer/api/consume
+echo "GET ${CONSUMER_URL}/api/consume"
+curl -s ${CONSUMER_URL}/api/consume | jq '.' || curl -s ${CONSUMER_URL}/api/consume
+echo ""
+
+echo ""
+echo "🔍 Testing Kong Gateway routes..."
+echo "GET ${KONG_URL}/producer/health"
+curl -s ${KONG_URL}/producer/health | jq '.' || curl -s ${KONG_URL}/producer/health
 echo ""
 
 echo ""
 echo "✅ Testing complete!"
 echo ""
 echo "🌐 Access the admin interfaces:"
-echo "  Producer Custom Admin: http://${KONG_HOST}:30080/producer/admin-dashboard"
-echo "  Producer Django Admin: http://${KONG_HOST}:30080/producer/admin"
-echo "  Consumer Custom Admin: http://${KONG_HOST}:30080/consumer/admin-dashboard"
-echo "  Consumer Django Admin: http://${KONG_HOST}:30080/consumer/admin"
-echo ""
-echo "Note: If using port-forwarding instead, run:"
-echo "  kubectl port-forward -n kong svc/kong-proxy 8000:8000"
-echo "  Then access via:"
-echo "    http://localhost:8000/producer/admin-dashboard (custom admin)"
-echo "    http://localhost:8000/producer/admin (Django admin)"
-echo "    http://localhost:8000/consumer/admin-dashboard (custom admin)"
-echo "    http://localhost:8000/consumer/admin (Django admin)"
+echo "  Producer Custom Admin: ${PRODUCER_URL}/admin-dashboard"
+echo "  Producer Django Admin: ${PRODUCER_URL}/admin"
+echo "  Consumer Custom Admin: ${CONSUMER_URL}/admin-dashboard"
+echo "  Consumer Django Admin: ${CONSUMER_URL}/admin"
+echo "  Kong Gateway: ${KONG_URL}"
