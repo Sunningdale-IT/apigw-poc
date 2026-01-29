@@ -10,8 +10,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = '/app/static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
+
+def allowed_file(filename):
+    """Check if file has an allowed extension"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def validate_coordinates(latitude, longitude):
+    """Validate GPS coordinates are within valid ranges"""
+    return -90 <= latitude <= 90 and -180 <= longitude <= 180
 
 # Database model for dogs
 class Dog(db.Model):
@@ -24,7 +34,7 @@ class Dog(db.Model):
     breed = db.Column(db.String(100), nullable=False)
     photo_filename = db.Column(db.String(255))
     comments = db.Column(db.Text)
-    caught_date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    caught_date = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
     
     def __repr__(self):
         return f'<Dog {self.name}>'
@@ -47,17 +57,38 @@ def admin():
 def add_dog():
     """Handle form submission to add a new dog"""
     try:
-        name = request.form.get('name')
-        latitude = float(request.form.get('latitude'))
-        longitude = float(request.form.get('longitude'))
-        breed = request.form.get('breed')
+        # Validate required fields
+        name = request.form.get('name', '').strip()
+        breed = request.form.get('breed', '').strip()
+        
+        if not name or not breed:
+            flash('Name and breed are required fields.', 'error')
+            return redirect(url_for('admin'))
+        
+        # Validate and convert coordinates
+        try:
+            latitude = float(request.form.get('latitude'))
+            longitude = float(request.form.get('longitude'))
+        except (TypeError, ValueError):
+            flash('Invalid GPS coordinates. Please enter valid numbers.', 'error')
+            return redirect(url_for('admin'))
+        
+        # Validate coordinate ranges
+        if not validate_coordinates(latitude, longitude):
+            flash('GPS coordinates out of valid range. Latitude must be between -90 and 90, longitude between -180 and 180.', 'error')
+            return redirect(url_for('admin'))
+        
         comments = request.form.get('comments', '')
         
-        # Handle file upload
+        # Handle file upload with validation
         photo_filename = None
         if 'photo' in request.files:
             photo = request.files['photo']
             if photo.filename != '':
+                if not allowed_file(photo.filename):
+                    flash('Invalid file type. Only PNG, JPG, JPEG, and GIF images are allowed.', 'error')
+                    return redirect(url_for('admin'))
+                
                 filename = secure_filename(photo.filename)
                 # Add timestamp to avoid filename collisions
                 timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_')
@@ -81,6 +112,7 @@ def add_dog():
         return redirect(url_for('admin'))
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Error adding dog: {str(e)}', 'error')
         return redirect(url_for('admin'))
 
@@ -95,21 +127,29 @@ def delete_dog(dog_id):
     """Delete a dog from the database"""
     try:
         dog = Dog.query.get_or_404(dog_id)
+        dog_name = dog.name
         
         # Delete photo file if it exists
         if dog.photo_filename:
             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], dog.photo_filename)
             if os.path.exists(photo_path):
-                os.remove(photo_path)
+                try:
+                    os.remove(photo_path)
+                except OSError as e:
+                    # Log the error but continue with database deletion
+                    print(f"Warning: Could not delete photo file: {e}")
         
         db.session.delete(dog)
         db.session.commit()
         
-        flash(f'Successfully deleted {dog.name} from the database.', 'success')
+        flash(f'Successfully deleted {dog_name} from the database.', 'success')
     except Exception as e:
+        db.session.rollback()
         flash(f'Error deleting dog: {str(e)}', 'error')
     
     return redirect(url_for('browse'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Debug mode controlled by environment variable, defaults to False for safety
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
