@@ -1,4 +1,0 @@
-Django==4.2.26
-djangorestframework==3.14.0
-requests==2.31.0
-gunicorn==22.0.0

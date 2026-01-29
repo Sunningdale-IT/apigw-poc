@@ -47,3 +47,7 @@ local_settings.py
 # Temporary files
 /tmp/
 *.tmp
+
+# Flask uploads
+app/static/uploads/*
+!app/static/uploads/.gitkeep
