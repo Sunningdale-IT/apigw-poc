@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Dogs - City Dog Catcher{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dogs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .dog-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .dog-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .dog-photo {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .dog-name {
+        color: #667eea;
+        font-size: 1.5em;
+        margin-bottom: 10px;
+    }
+    
+    .dog-info {
+        color: #666;
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+    
+    .dog-info strong {
+        color: #333;
+    }
+    
+    .location-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    .location-link:hover {
+        text-decoration: underline;
+    }
+    
+    .no-dogs {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .no-dogs h3 {
+        color: #333;
+        margin-bottom: 15px;
+    }
+    
+    .delete-form {
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 style="color: #667eea;">Dogs Database</h2>
+        <div style="color: #666;">Total Dogs: <strong>{{ dogs|length }}</strong></div>
+    </div>
+    
+    {% if dogs %}
+        <div class="dogs-grid">
+            {% for dog in dogs %}
+            <div class="dog-card">
+                {% if dog.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + dog.photo_filename) }}" 
+                         alt="{{ dog.name }}" class="dog-photo">
+                {% else %}
+                    <div class="dog-photo" style="background: #ddd; display: flex; align-items: center; justify-content: center; color: #999; font-size: 3em;">
+                        🐕
+                    </div>
+                {% endif %}
+                
+                <h3 class="dog-name">{{ dog.name }}</h3>
+                
+                <div class="dog-info">
+                    <strong>Breed:</strong> {{ dog.breed }}
+                </div>
+                
+                <div class="dog-info">
+                    <strong>Found at:</strong><br>
+                    <a href="https://www.google.com/maps?q={{ dog.latitude }},{{ dog.longitude }}" 
+                       target="_blank" class="location-link">
+                        📍 {{ "%.6f"|format(dog.latitude) }}, {{ "%.6f"|format(dog.longitude) }}
+                    </a>
+                </div>
+                
+                <div class="dog-info">
+                    <strong>Caught on:</strong> {{ dog.caught_date.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                
+                {% if dog.comments %}
+                <div class="dog-info" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                    <strong>Comments:</strong><br>
+                    {{ dog.comments }}
+                </div>
+                {% endif %}
+                
+                <form action="{{ url_for('delete_dog', dog_id=dog.id) }}" method="POST" 
+                      class="delete-form" 
+                      onsubmit="return confirm('Are you sure you want to delete {{ dog.name }}?');">
+                    <button type="submit" class="btn btn-danger" style="width: 100%;">Delete Entry</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-dogs">
+            <h3>No dogs in the database yet</h3>
+            <p>Start by <a href="{{ url_for('admin') }}" style="color: #667eea;">adding a dog</a> to the system.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
