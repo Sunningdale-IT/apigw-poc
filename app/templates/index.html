@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 40px 0;">
+    <h2 style="color: #667eea; margin-bottom: 20px;">Welcome to the Dog Catcher System</h2>
+    <p style="font-size: 1.2em; color: #666; margin-bottom: 30px;">
+        This system helps manage information about found dogs in the city.
+    </p>
+    
+    <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; max-width: 300px;">
+            <h3 style="color: #333; margin-bottom: 15px;">📝 Add Dog</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                Enter details of newly caught dogs including location, breed, and photos.
+            </p>
+            <a href="{{ url_for('admin') }}" class="btn">Go to Admin</a>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; max-width: 300px;">
+            <h3 style="color: #333; margin-bottom: 15px;">🔍 Browse Dogs</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                View all caught dogs and their information in the database.
+            </p>
+            <a href="{{ url_for('browse') }}" class="btn">Browse Database</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

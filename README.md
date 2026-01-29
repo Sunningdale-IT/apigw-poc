@@ -1,461 +1,258 @@
-# Kong API Gateway - Proof of Concept
+# 🐕 City Dog Catcher Application
 
-This repository contains a proof of concept demonstrating the use of Kong API Gateway with two sample microservices (Producer and Consumer) deployed on Kubernetes.
+A web-based application for city dog catchers to manage information about caught dogs. The application allows dog catchers to record details of found dogs and browse the database through a user-friendly web interface.
 
-## 📋 Overview
+## Features
 
-This PoC demonstrates how Kong API Gateway simplifies the integration between microservices by:
-- **Centralized Routing**: All API traffic flows through Kong, eliminating the need for services to know each other's locations
-- **Service Discovery**: Services communicate via Kong routes instead of direct service URLs
-- **Namespace Isolation**: Each service runs in its own Kubernetes namespace, promoting security and organization
-- **API Management**: Kong provides a single point for managing, monitoring, and securing APIs
+- **Add Dog Entries**: Record details of caught dogs including:
+  - Name
+  - GPS coordinates (latitude/longitude) where found
+  - Breed
+  - Photo upload
+  - Additional comments
+- **Browse Database**: View all caught dogs with their information in an easy-to-browse interface
+- **Photo Management**: Upload and view photos of caught dogs
+- **Location Mapping**: Direct links to Google Maps for found locations
+- **Containerized Deployment**: Easy deployment using Docker Compose
 
-### Architecture
+## Prerequisites
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Kubernetes Cluster                   │
-│                                                           │
-│  ┌───────────────┐      ┌───────────────┐               │
-│  │   Namespace:  │      │   Namespace:  │               │
-│  │   producer    │      │     kong      │               │
-│  │               │      │               │               │
-│  │  ┌─────────┐  │      │  ┌─────────┐  │               │
-│  │  │Producer │  │◄─────┼──│  Kong   │  │               │
-│  │  │  App    │  │      │  │ Gateway │  │               │
-│  │  │         │  │      │  │         │  │               │
-│  │  │ Admin:  │  │      │  └─────────┘  │               │
-│  │  │ /admin  │  │      │  Routes:       │               │
-│  │  └─────────┘  │      │  /producer     │               │
-│  │   Port: 80    │      │  /consumer     │               │
-│  └───────────────┘      └───────────────┘               │
-│                                 │                         │
-│                                 │                         │
-│  ┌───────────────┐              │                        │
-│  │   Namespace:  │              │                        │
-│  │   consumer    │              │                        │
-│  │               │              │                        │
-│  │  ┌─────────┐  │              │                        │
-│  │  │Consumer │  │◄─────────────┘                        │
-│  │  │  App    │  │                                       │
-│  │  │         │  │                                       │
-│  │  │ Admin:  │  │                                       │
-│  │  │ /admin  │  │                                       │
-│  │  └─────────┘  │                                       │
-│  │   Port: 80    │                                       │
-│  └───────────────┘                                       │
-│                                                           │
-└─────────────────────────────────────────────────────────┘
-```
+- Docker (version 20.10 or later)
+- Docker Compose (version 2.0 or later)
 
-### Components
+## Quick Start
 
-1. **Producer Application** (Namespace: `producer`)
-   - Django-based REST API that generates data
-   - Custom admin dashboard at `/admin-dashboard` for monitoring
-   - Built-in Django admin at `/admin` for database management
-   - Endpoints:
-     - `GET /api/data` - Get all produced data
-     - `GET /api/data/latest` - Get latest data item
-     - `POST /api/produce` - Generate new data
-     - `GET /health` - Health check
-
-2. **Consumer Application** (Namespace: `consumer`)
-   - Django-based REST API that consumes data from Producer
-   - Custom admin dashboard at `/admin-dashboard` for monitoring
-   - Built-in Django admin at `/admin` for database management
-   - Communicates with Producer **only through Kong Gateway**
-   - Endpoints:
-     - `GET /api/consume` - Fetch data from Producer via Kong
-     - `POST /api/trigger-produce` - Trigger Producer via Kong
-     - `GET /api/consumed` - View consumed data
-     - `GET /health` - Health check
-
-3. **Kong API Gateway** (Namespace: `kong`)
-   - Routes requests to Producer and Consumer services
-   - Provides centralized API management
-   - Exposes services via NodePort (30080 for proxy, 30081 for admin)
-   - Routes:
-     - `/producer/*` → Producer service
-     - `/consumer/*` → Consumer service
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Azure Kubernetes Service (AKS) cluster with cert-manager installed
-- Docker Hub account (images hosted at https://hub.docker.com/repository/docker/jimleitch)
-- Docker (for building images)
-- kubectl configured to access your AKS cluster
-- Helm 3.x (for Helm deployment method)
-- curl and jq (optional, for testing)
-
-### Deployment Steps
-
-#### Option 1: Deploy with Helm (Recommended)
+### 1. Clone the Repository
 
 ```bash
-# 1. Build and push Docker images (requires Docker Hub login)
-docker login
-./scripts/build-and-push.sh
-
-# 2. Install with Helm
-helm install apigw-poc ./helm-chart/apigw-poc
-
-# 3. Wait for external IPs to be assigned
-kubectl get ingress -A
-
-# 4. Configure DNS records
-# Point the following domains to the ingress external IPs:
-# - kong.jim00.pd.test-rig.nl
-# - producer.jim00.pd.test-rig.nl
-# - consumer.jim00.pd.test-rig.nl
-
-# 5. Test the setup (after DNS propagation)
-./scripts/test-api.sh
+git clone <repository-url>
+cd apigw-poc
 ```
 
-For custom configuration with Helm:
-```bash
-# Install with custom domain
-helm install apigw-poc ./helm-chart/apigw-poc \
-  --set global.domainSuffix=yourdomain.com
-
-# Install with custom image tags
-helm install apigw-poc ./helm-chart/apigw-poc \
-  --set producer.image.tag=v1.0.0 \
-  --set consumer.image.tag=v1.0.0
-```
-
-See [helm-chart/apigw-poc/README.md](helm-chart/apigw-poc/README.md) for full Helm documentation.
-
-#### Option 2: Deploy with kubectl (Manual)
+### 2. Start the Application
 
 ```bash
-# 1. Build and push Docker images (requires Docker Hub login)
-docker login
-./scripts/build-and-push.sh
-
-# 2. Deploy to AKS
-./scripts/deploy.sh
-
-# 3. Wait for external IPs to be assigned
-kubectl get ingress -A
-
-# 4. Configure DNS records
-# Point the following domains to the ingress external IPs:
-# - kong.jim00.pd.test-rig.nl
-# - producer.jim00.pd.test-rig.nl
-# - consumer.jim00.pd.test-rig.nl
-
-# 5. Test the setup (after DNS propagation)
-./scripts/test-api.sh
+docker-compose up -d
 ```
 
-### Note on cert-manager
+This will:
+- Build the Flask web application container
+- Start a PostgreSQL database container
+- Create the necessary database tables
+- Start the web server on port 5000
 
-This deployment assumes that cert-manager is already installed on your AKS cluster with a ClusterIssuer named `letsencrypt-prod`. The ingress configurations will automatically request TLS certificates from Let's Encrypt.
+### 3. Access the Application
 
-If you need to install cert-manager, refer to the [cert-manager documentation](https://cert-manager.io/docs/installation/)
+Open your web browser and navigate to:
 
-## 📊 Accessing the Applications
-
-All services are accessible via HTTPS using external domain names:
-
-- **Kong Gateway**: `https://kong.jim00.pd.test-rig.nl`
-- **Producer Custom Admin**: `https://producer.jim00.pd.test-rig.nl/admin-dashboard`
-- **Producer Django Admin**: `https://producer.jim00.pd.test-rig.nl/admin`
-- **Consumer Custom Admin**: `https://consumer.jim00.pd.test-rig.nl/admin-dashboard`
-- **Consumer Django Admin**: `https://consumer.jim00.pd.test-rig.nl/admin`
-
-### Via Kong Gateway Routes
-
-You can also access services through Kong:
-
-- **Producer via Kong**: `https://kong.jim00.pd.test-rig.nl/producer/*`
-- **Consumer via Kong**: `https://kong.jim00.pd.test-rig.nl/consumer/*`
-
-## 🧪 Testing the Setup
-
-### Manual Testing
-
-```bash
-# Check health of Producer
-curl https://producer.jim00.pd.test-rig.nl/health
-
-# Check health of Consumer
-curl https://consumer.jim00.pd.test-rig.nl/health
-
-# Get data from Producer
-curl https://producer.jim00.pd.test-rig.nl/api/data
-
-# Trigger Consumer to fetch from Producer (via Kong)
-curl https://consumer.jim00.pd.test-rig.nl/api/consume
-
-# Trigger Producer to generate new data (from Consumer via Kong)
-curl -X POST https://consumer.jim00.pd.test-rig.nl/api/trigger-produce
-
-# Test via Kong Gateway routes
-curl https://kong.jim00.pd.test-rig.nl/producer/health
-curl https://kong.jim00.pd.test-rig.nl/consumer/health
+```
+http://localhost:5000
 ```
 
-### Automated Testing
+## Usage
 
-```bash
-# Run the test script
-./scripts/test-api.sh
-```
+### Adding a Dog
 
-## 🎯 How Kong Makes Integration Easier
+1. Click on "Add Dog" in the navigation menu
+2. Fill in the form with the dog's details:
+   - **Name**: Enter the dog's name (required)
+   - **Breed**: Specify the breed (required)
+   - **Latitude/Longitude**: Enter GPS coordinates where the dog was found (required)
+   - **Photo**: Upload a photo of the dog (optional, max 16MB)
+   - **Comments**: Add any additional notes (optional)
+3. Click "Submit Dog Entry"
 
-This PoC demonstrates several key benefits of using an API Gateway:
+### Finding GPS Coordinates
 
-### 1. **Service Decoupling**
-- Consumer doesn't need to know the Producer's actual location
-- Services communicate through Kong routes (e.g., `/producer`) instead of direct URLs
-- Services can be moved, scaled, or replaced without changing consumer code
+You can obtain GPS coordinates using:
+- **Google Maps**: Right-click on a location and copy the coordinates
+- **Smartphone GPS**: Use a location-sharing app or GPS coordinates app
+- **GPS Device**: Direct reading from the device
 
-### 2. **Centralized Configuration**
-- All routing rules are defined in one place (Kong ConfigMap)
-- Easy to add new routes, services, or modify existing ones
-- Single source of truth for API endpoints
+Example coordinates:
+- Latitude: 51.5074 (London)
+- Longitude: -0.1278 (London)
 
-### 3. **Namespace Isolation**
-- Each service runs in its own namespace for security
-- Kong bridges communication across namespaces
-- Services are isolated but can still communicate securely
+### Browsing Dogs
 
-### 4. **Future Extensibility**
-Kong can easily be extended to add:
-- Authentication and authorization
-- Rate limiting
-- Request/response transformation
-- Logging and monitoring
-- Load balancing
-- Circuit breakers
-- API versioning
+1. Click on "Browse Dogs" in the navigation menu
+2. View all caught dogs displayed as cards
+3. Each card shows:
+   - Dog photo (if uploaded)
+   - Name and breed
+   - GPS coordinates with link to Google Maps
+   - Date and time caught
+   - Comments
+4. Click on the location coordinates to view the exact spot on Google Maps
+5. Use the "Delete Entry" button to remove a dog from the database
 
-### 5. **Admin Interfaces**
-Both applications include dual admin interfaces:
-- **Custom Admin Dashboard** (`/admin-dashboard`): Simple monitoring interface showing:
-  - Request statistics
-  - Data flow
-  - Service health
-  - Real-time monitoring (auto-refresh every 5 seconds)
-  - API usage patterns
-- **Django Admin** (`/admin`): Full-featured Django administration interface for:
-  - Database management
-  - Data inspection and editing
-  - User management
-  - Advanced filtering and search
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 .
-├── producer-app/           # Producer microservice (Django)
-│   ├── producerapp/       # Django project configuration
-│   │   ├── settings.py    # Django settings
-│   │   ├── urls.py        # URL routing
-│   │   └── wsgi.py        # WSGI application
-│   ├── producer/          # Django app
-│   │   ├── models.py      # Data models
-│   │   ├── views.py       # API views
-│   │   ├── admin.py       # Django admin configuration
-│   │   ├── serializers.py # DRF serializers
-│   │   └── templates/     # HTML templates
-│   ├── manage.py          # Django management script
-│   ├── Dockerfile         # Docker image definition
-│   └── requirements.txt   # Python dependencies
-├── consumer-app/          # Consumer microservice (Django)
-│   ├── consumerapp/       # Django project configuration
-│   │   ├── settings.py    # Django settings
-│   │   ├── urls.py        # URL routing
-│   │   └── wsgi.py        # WSGI application
-│   ├── consumer/          # Django app
-│   │   ├── models.py      # Data models
-│   │   ├── views.py       # API views
-│   │   ├── admin.py       # Django admin configuration
-│   │   ├── serializers.py # DRF serializers
-│   │   └── templates/     # HTML templates
-│   ├── manage.py          # Django management script
-│   ├── Dockerfile         # Docker image definition
-│   └── requirements.txt   # Python dependencies
-├── k8s-manifests/        # Kubernetes manifests (for kubectl deployment)
-│   ├── kong/            # Kong Gateway configuration
-│   │   ├── 00-namespace.yaml
-│   │   ├── 01-configmap.yaml
-│   │   ├── 02-deployment.yaml
-│   │   ├── 03-service.yaml
-│   │   └── 04-ingress.yaml
-│   ├── producer/        # Producer service manifests
-│   │   ├── 00-namespace.yaml
-│   │   ├── 01-deployment.yaml
-│   │   ├── 02-service.yaml
-│   │   └── 03-ingress.yaml
-│   └── consumer/        # Consumer service manifests
-│       ├── 00-namespace.yaml
-│       ├── 01-deployment.yaml
-│       ├── 02-service.yaml
-│       └── 03-ingress.yaml
-├── helm-chart/           # Helm chart for deployment
-│   └── apigw-poc/       # Helm chart package
-│       ├── Chart.yaml   # Chart metadata
-│       ├── values.yaml  # Default configuration values
-│       ├── README.md    # Helm chart documentation
-│       └── templates/   # Kubernetes resource templates
-│           ├── _helpers.tpl
-│           ├── *-namespace.yaml
-│           ├── *-deployment.yaml
-│           ├── *-service.yaml
-│           ├── *-ingress.yaml
-│           └── kong-configmap.yaml
-├── scripts/              # Utility scripts
-│   ├── build-images.sh    # Build Docker images
-│   ├── build-and-push.sh  # Build and push to Docker Hub
-│   ├── deploy.sh          # Deploy to Kubernetes with kubectl
-│   ├── test-api.sh        # Test the deployment
-│   ├── status.sh          # Check deployment status
-│   └── cleanup.sh         # Remove all resources
-└── README.md            # This file
+├── app/                      # Application directory
+│   ├── app.py               # Main Flask application
+│   ├── requirements.txt     # Python dependencies
+│   ├── Dockerfile           # Docker image for web app
+│   ├── static/              # Static files
+│   │   └── uploads/         # Dog photo uploads
+│   └── templates/           # HTML templates
+│       ├── base.html        # Base template
+│       ├── index.html       # Home page
+│       ├── admin.html       # Add dog form
+│       └── browse.html      # Browse dogs page
+├── docker-compose.yml       # Docker Compose configuration
+└── README.md               # This file
 ```
 
-## 🔧 Configuration
-
-### Ingress and External Access
-
-The deployment uses Kubernetes Ingress with cert-manager for external HTTPS access:
-
-**External URLs:**
-- Kong Gateway: `https://kong.jim00.pd.test-rig.nl`
-- Producer Service: `https://producer.jim00.pd.test-rig.nl`
-- Consumer Service: `https://consumer.jim00.pd.test-rig.nl`
-
-Each service has its own ingress configuration in `k8s-manifests/*/03-ingress.yaml` that:
-- Configures TLS/SSL using cert-manager
-- Requests certificates from Let's Encrypt
-- Routes traffic to the appropriate service
-
-**DNS Configuration:**
-You need to create DNS A records pointing to your ingress controller's external IP:
-```bash
-# Get the ingress external IP
-kubectl get ingress -A
-
-# Create DNS records pointing to this IP:
-# - kong.jim00.pd.test-rig.nl
-# - producer.jim00.pd.test-rig.nl  
-# - consumer.jim00.pd.test-rig.nl
-```
-
-### Kong Routes
-
-Routes are configured in `k8s-manifests/kong/01-configmap.yaml`:
-
-```yaml
-services:
-- name: producer-service
-  url: http://producer-service.producer:80
-  routes:
-  - name: producer-route
-    paths:
-    - /producer
-    strip_path: true
-
-- name: consumer-service
-  url: http://consumer-service.consumer:80
-  routes:
-  - name: consumer-route
-    paths:
-    - /consumer
-    strip_path: true
-```
+## Configuration
 
 ### Environment Variables
 
-**Consumer Application:**
-- `PRODUCER_API_URL`: Kong Gateway URL for Producer service (default: `http://kong-proxy.kong:8000/producer`)
-- `PORT`: Application port (default: `5001`)
+The application uses the following environment variables (configured in docker-compose.yml):
 
-**Producer Application:**
-- `PORT`: Application port (default: `5000`)
+**Database:**
+- `POSTGRES_DB`: Database name (default: dogcatcher)
+- `POSTGRES_USER`: Database user (default: dogcatcher)
+- `POSTGRES_PASSWORD`: Database password (default: dogcatcher123)
 
-## 📊 Monitoring
+**Web Application:**
+- `DATABASE_URL`: PostgreSQL connection string
+- `SECRET_KEY`: Flask secret key for sessions (change in production!)
 
-### Check Deployment Status
+### Ports
 
-```bash
-./scripts/status.sh
-```
+- **Web Application**: `5000` (mapped to host port 5000)
+- **PostgreSQL Database**: `5432` (mapped to host port 5432)
 
-### View Logs
+## Development
 
-```bash
-# Kong logs
-kubectl logs -n kong -l app=kong-proxy -f
-
-# Producer logs
-kubectl logs -n producer -l app=producer -f
-
-# Consumer logs
-kubectl logs -n consumer -l app=consumer -f
-```
-
-### Check Services
+### Viewing Logs
 
 ```bash
-kubectl get all -n kong
-kubectl get all -n producer
-kubectl get all -n consumer
+# View all logs
+docker-compose logs -f
+
+# View web application logs only
+docker-compose logs -f web
+
+# View database logs only
+docker-compose logs -f db
 ```
 
-## 🧹 Cleanup
+### Stopping the Application
 
-To remove all deployed resources:
-
-### If deployed with Helm:
 ```bash
-# Uninstall the Helm release
-helm uninstall apigw-poc
-
-# Optionally delete the namespaces
-kubectl delete namespace producer consumer kong
+docker-compose down
 ```
 
-### If deployed with kubectl:
+### Stopping and Removing Data
+
+To stop the application and remove all data (including uploaded photos and database):
+
 ```bash
-# Remove all resources
-./scripts/cleanup.sh
+docker-compose down -v
 ```
 
-## 🎓 Learning Outcomes
+### Rebuilding After Changes
 
-After working with this PoC, you will understand:
+If you make changes to the application code:
 
-1. How Kong API Gateway routes traffic between microservices
-2. How to configure Kong using declarative configuration
-3. Benefits of namespace isolation in Kubernetes
-4. How services can communicate through an API gateway
-5. How to monitor microservices with admin interfaces
-6. How API gateways simplify microservice architecture
+```bash
+docker-compose down
+docker-compose up -d --build
+```
 
-## 🔜 Next Steps
+## Database
 
-To further explore Kong's capabilities, you can:
+The application uses PostgreSQL 16 with a single table:
 
-1. Add authentication plugins (JWT, OAuth2, API Keys)
-2. Implement rate limiting
-3. Add request/response logging
-4. Configure load balancing for multiple replicas
-5. Set up HTTPS/TLS termination
-6. Add custom plugins
-7. Integrate with monitoring tools (Prometheus, Grafana)
+**dogs table:**
+- `id`: Primary key (auto-increment)
+- `name`: Dog's name (varchar)
+- `latitude`: GPS latitude (float)
+- `longitude`: GPS longitude (float)
+- `breed`: Dog breed (varchar)
+- `photo_filename`: Uploaded photo filename (varchar, nullable)
+- `comments`: Additional notes (text, nullable)
+- `caught_date`: Timestamp when record was created (datetime)
 
-## 📝 License
+## Security Notes
 
-This is a proof of concept for educational purposes.
+⚠️ **Important**: This is a sample application. Before deploying to production:
 
-## 🤝 Contributing
+1. **Change the SECRET_KEY environment variable** to a strong, randomly generated value
+2. **Use strong database passwords** instead of the default credentials
+3. **Disable debug mode** by setting `FLASK_DEBUG=false` or removing the environment variable
+4. **Implement user authentication** to restrict access to the admin functions
+5. **Add SSL/TLS encryption** for HTTPS connections
+6. **Configure proper file upload validation** and scanning for malware
+7. **Set up database backups** and disaster recovery procedures
+8. **Review and implement security best practices** for production deployments
+9. **Use a production WSGI server** like Gunicorn instead of Flask's development server
+10. **Enable CSRF protection** using Flask-WTF or similar libraries
 
-This is a demonstration project. Feel free to fork and extend it for your own learning.
+**Current Security Features:**
+- File type validation for photo uploads (only PNG, JPG, JPEG, GIF allowed)
+- GPS coordinate validation to ensure valid ranges
+- Secure filename handling to prevent directory traversal attacks
+- Database transaction rollback on errors
+- Server-side validation for all input fields
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port 5000 or 5432 is already in use on your system, edit `docker-compose.yml` and change the port mappings:
+
+```yaml
+ports:
+  - "8080:5000"  # Change 5000 to 8080 or any available port
+```
+
+### Database Connection Issues
+
+If the web application can't connect to the database:
+
+1. Check if the database container is healthy:
+   ```bash
+   docker-compose ps
+   ```
+
+2. View database logs:
+   ```bash
+   docker-compose logs db
+   ```
+
+3. Restart the services:
+   ```bash
+   docker-compose restart
+   ```
+
+### Photo Upload Issues
+
+If photos aren't uploading:
+
+1. Check the uploads directory exists:
+   ```bash
+   docker-compose exec web ls -la /app/static/uploads
+   ```
+
+2. Check available disk space
+3. Ensure the photo is under 16MB
+
+## Technology Stack
+
+- **Backend**: Flask 3.0 (Python web framework)
+- **Database**: PostgreSQL 16
+- **ORM**: SQLAlchemy
+- **Containerization**: Docker & Docker Compose
+- **Frontend**: HTML, CSS (embedded in templates)
+
+## License
+
+This is a sample application for demonstration purposes.
+
+## Support
+
+For issues or questions, please open an issue in the repository.
