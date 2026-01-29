@@ -181,13 +181,23 @@ The application uses PostgreSQL 16 with a single table:
 
 ⚠️ **Important**: This is a sample application. Before deploying to production:
 
-1. Change the `SECRET_KEY` environment variable
-2. Use strong database passwords
-3. Implement user authentication
-4. Add SSL/TLS encryption
-5. Configure proper file upload validation
-6. Set up database backups
-7. Review and implement security best practices
+1. **Change the SECRET_KEY environment variable** to a strong, randomly generated value
+2. **Use strong database passwords** instead of the default credentials
+3. **Disable debug mode** by setting `FLASK_DEBUG=false` or removing the environment variable
+4. **Implement user authentication** to restrict access to the admin functions
+5. **Add SSL/TLS encryption** for HTTPS connections
+6. **Configure proper file upload validation** and scanning for malware
+7. **Set up database backups** and disaster recovery procedures
+8. **Review and implement security best practices** for production deployments
+9. **Use a production WSGI server** like Gunicorn instead of Flask's development server
+10. **Enable CSRF protection** using Flask-WTF or similar libraries
+
+**Current Security Features:**
+- File type validation for photo uploads (only PNG, JPG, JPEG, GIF allowed)
+- GPS coordinate validation to ensure valid ranges
+- Secure filename handling to prevent directory traversal attacks
+- Database transaction rollback on errors
+- Server-side validation for all input fields
 
 ## Troubleshooting
 
