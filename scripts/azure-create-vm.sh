@@ -26,6 +26,8 @@
 #   --install-app         Clone and start Dogcatcher app after VM creation
 #   --auto-delete TIME    Schedule daily deletion (default: 19:00, format HH:MM)
 #   --no-auto-delete      Disable auto-deletion scheduling
+#   --dns-rg GROUP        Resource group containing Azure DNS zone (required for DNS update)
+#   --no-dns              Skip DNS record update
 #   --dry-run             Show commands without executing
 #   -h, --help            Show this help message
 #
@@ -49,6 +51,12 @@ INSTALL_APP=false
 AUTO_DELETE=true
 AUTO_DELETE_TIME="19:00"
 DRY_RUN=false
+
+# DNS Configuration
+DNS_ZONE="jim00.pd.test-rig.nl"
+DNS_RESOURCE_GROUP="yourResourceGroup"  # Resource group containing DNS zone
+DNS_RECORD_NAME="dogcatcher"
+DOMAIN="${DNS_RECORD_NAME}.${DNS_ZONE}"
 
 # Ubuntu 22.04 LTS image
 IMAGE="Ubuntu2204"
@@ -114,6 +122,14 @@ parse_args() {
                 ;;
             --no-auto-delete)
                 AUTO_DELETE=false
+                shift
+                ;;
+            --dns-rg)
+                DNS_RESOURCE_GROUP="$2"
+                shift 2
+                ;;
+            --no-dns)
+                DNS_RESOURCE_GROUP=""
                 shift
                 ;;
             --dry-run)
@@ -347,6 +363,73 @@ get_vm_ip() {
     fi
     
     echo "${public_ip}"
+}
+
+update_dns_record() {
+    local public_ip="$1"
+    
+    if [[ -z "${DNS_RESOURCE_GROUP}" ]] || [[ "${DNS_RESOURCE_GROUP}" == "yourResourceGroup" ]]; then
+        log_warn "DNS resource group not configured. Skipping DNS update."
+        log_warn "Use --dns-rg <resource-group> to enable DNS updates."
+        return 0
+    fi
+    
+    log_info "Updating DNS record: ${DOMAIN} -> ${public_ip}"
+    
+    # Check if DNS zone exists
+    if ! az network dns zone show \
+        --resource-group "${DNS_RESOURCE_GROUP}" \
+        --name "${DNS_ZONE}" &>/dev/null; then
+        log_error "DNS zone ${DNS_ZONE} not found in resource group ${DNS_RESOURCE_GROUP}"
+        return 1
+    fi
+    
+    # Check if A record exists
+    if az network dns record-set a show \
+        --resource-group "${DNS_RESOURCE_GROUP}" \
+        --zone-name "${DNS_ZONE}" \
+        --name "${DNS_RECORD_NAME}" &>/dev/null; then
+        
+        # Record exists - remove old IP and add new one
+        log_info "Updating existing DNS A record..."
+        
+        # Get current IP(s) and remove them
+        local current_ips
+        current_ips=$(az network dns record-set a show \
+            --resource-group "${DNS_RESOURCE_GROUP}" \
+            --zone-name "${DNS_ZONE}" \
+            --name "${DNS_RECORD_NAME}" \
+            --query "aRecords[].ipv4Address" -o tsv 2>/dev/null || echo "")
+        
+        for ip in ${current_ips}; do
+            run_cmd az network dns record-set a remove-record \
+                --resource-group "${DNS_RESOURCE_GROUP}" \
+                --zone-name "${DNS_ZONE}" \
+                --record-set-name "${DNS_RECORD_NAME}" \
+                --ipv4-address "${ip}" \
+                --output none 2>/dev/null || true
+        done
+        
+        # Add new IP
+        run_cmd az network dns record-set a add-record \
+            --resource-group "${DNS_RESOURCE_GROUP}" \
+            --zone-name "${DNS_ZONE}" \
+            --record-set-name "${DNS_RECORD_NAME}" \
+            --ipv4-address "${public_ip}" \
+            --output none
+    else
+        # Create new A record
+        log_info "Creating new DNS A record..."
+        run_cmd az network dns record-set a add-record \
+            --resource-group "${DNS_RESOURCE_GROUP}" \
+            --zone-name "${DNS_ZONE}" \
+            --record-set-name "${DNS_RECORD_NAME}" \
+            --ipv4-address "${public_ip}" \
+            --ttl 300 \
+            --output none
+    fi
+    
+    log_success "DNS record updated: ${DOMAIN} -> ${public_ip}"
 }
 
 schedule_auto_delete() {
@@ -743,6 +826,8 @@ main() {
     log_info "  Open HTTP Ports: ${OPEN_HTTP}"
     log_info "  Install App: ${INSTALL_APP}"
     log_info "  Auto Delete: ${AUTO_DELETE} (at ${AUTO_DELETE_TIME} UTC)"
+    log_info "  DNS Domain: ${DOMAIN}"
+    log_info "  DNS Resource Group: ${DNS_RESOURCE_GROUP:-not configured}"
     log_info "  Dry Run: ${DRY_RUN}"
     echo ""
     
@@ -758,6 +843,9 @@ main() {
     
     local public_ip
     public_ip=$(get_vm_ip)
+    
+    # Update DNS record
+    update_dns_record "${public_ip}"
     
     # Schedule auto-deletion if enabled
     if [[ "${AUTO_DELETE}" == true ]]; then
