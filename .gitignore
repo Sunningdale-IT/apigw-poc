@@ -51,3 +51,23 @@ local_settings.py
 # Flask uploads
 app/static/uploads/*
 !app/static/uploads/.gitkeep
+
+# Certificates and keys (NEVER commit private keys)
+certs/
+*.key
+*.pem
+*.p12
+*.pfx
+!*.key.example
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Playwright MCP screenshots (may contain sensitive data)
+.playwright-mcp/
+
+# Generated secrets
+*-secrets.yaml
+*-secret.yaml
