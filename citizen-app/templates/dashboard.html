@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1><i class="bi bi-speedometer2"></i> Welcome, {{ citizen.name }}</h1>
+        <p class="mb-0 opacity-75">Access your local government services below</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <!-- Citizen Info Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                         style="width: 60px; height: 60px; font-size: 1.5rem;">
+                        <i class="bi bi-person"></i>
+                    </div>
+                </div>
+                <div class="col">
+                    <h5 class="mb-1">{{ citizen.name }}</h5>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-envelope"></i> {{ citizen.email }} &nbsp;|&nbsp;
+                        <i class="bi bi-geo-alt"></i> {{ citizen.address }}
+                    </p>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-success fs-6">
+                        <i class="bi bi-check-circle"></i> Verified Citizen
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Services Grid -->
+    <h4 class="mb-3"><i class="bi bi-grid"></i> Available Services</h4>
+    
+    <div class="row g-4">
+        <!-- Passport -->
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('passport') }}" class="text-decoration-none">
+                <div class="card service-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="service-icon passport me-3">
+                                <i class="bi bi-passport"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-dark">Passport Services</h5>
+                                <p class="card-text text-muted">Renew or apply for a new passport</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <span class="text-primary">Access service <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Driving License -->
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('driving_license') }}" class="text-decoration-none">
+                <div class="card service-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="service-icon license me-3">
+                                <i class="bi bi-car-front"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-dark">Driving License</h5>
+                                <p class="card-text text-muted">Renew or update your driving license</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <span class="text-primary">Access service <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Building Permit -->
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('building_permit') }}" class="text-decoration-none">
+                <div class="card service-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="service-icon permit me-3">
+                                <i class="bi bi-house-gear"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-dark">Building Permits</h5>
+                                <p class="card-text text-muted">Apply for construction or renovation permits</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <span class="text-primary">Access service <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Trash Collection -->
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('trash_collection') }}" class="text-decoration-none">
+                <div class="card service-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="service-icon trash me-3">
+                                <i class="bi bi-trash3"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-dark">Trash Collection</h5>
+                                <p class="card-text text-muted">View collection schedules and information</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <span class="text-primary">Access service <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Found Dogs -->
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('found_dogs') }}" class="text-decoration-none">
+                <div class="card service-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="service-icon dogs me-3">
+                                <i class="bi bi-heart"></i>
+                            </div>
+                            <div>
+                                <h5 class="card-title text-dark">Found Dogs</h5>
+                                <p class="card-text text-muted">Search for lost pets at the local pound</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <span class="text-primary">Access service <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Quick Info -->
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5><i class="bi bi-clock text-primary"></i> Office Hours</h5>
+                    <p class="mb-0">Monday - Friday: 9:00 AM - 5:00 PM<br>
+                    Saturday: 9:00 AM - 12:00 PM</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5><i class="bi bi-telephone text-primary"></i> Contact Us</h5>
+                    <p class="mb-0">Phone: 555-GOV-HELP (555-468-4357)<br>
+                    Email: help@modelcitizen.gov</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

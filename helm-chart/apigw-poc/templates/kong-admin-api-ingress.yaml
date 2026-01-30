@@ -1,0 +1,49 @@
+{{- if and .Values.kong.enabled .Values.kong.adminApiIngress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin-api-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "apigw-poc.kong.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.global.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.tls.clusterIssuer | quote }}
+    {{- end }}
+    {{- if eq (include "apigw-poc.kong.keycloak.enabledReady" .) "true" }}
+    traefik.ingress.kubernetes.io/router.middlewares: "kong-manager-auth@kubernetescrd"
+    {{- end }}
+    {{- with .Values.kong.adminApiIngress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.kong.adminApiIngress.className }}
+  {{- if .Values.global.tls.enabled }}
+  tls:
+  - hosts:
+    - kong-admin-api.{{ .Values.global.domainSuffix }}
+    secretName: kong-admin-api-tls-cert
+  {{- end }}
+  rules:
+  - host: kong-admin-api.{{ .Values.global.domainSuffix }}
+    http:
+      paths:
+      {{- if eq (include "apigw-poc.kong.keycloak.enabledReady" .) "true" }}
+      - path: /oauth2
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-oauth2-proxy
+            port:
+              number: 4180
+      {{- end }}
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: {{ .Values.kong.service.ports.admin }}
+{{- end }}
+

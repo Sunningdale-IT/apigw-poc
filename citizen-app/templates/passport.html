@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Passport Services{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item active text-white">Passport</li>
+            </ol>
+        </nav>
+        <h1><i class="bi bi-passport"></i> Passport Services</h1>
+        <p class="mb-0 opacity-75">View and renew your passport</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row">
+        <!-- Current Passport Info -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle text-primary"></i> Current Passport</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="me-3">
+                            <div class="bg-primary text-white rounded p-3" style="font-size: 2rem;">
+                                <i class="bi bi-passport"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="mb-1">{{ citizen.name }}</h4>
+                            <span class="status-badge status-{{ passport.status|lower }}">{{ passport.status }}</span>
+                        </div>
+                    </div>
+                    
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted">Passport Number</td>
+                            <td class="fw-bold">{{ passport.number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Issue Date</td>
+                            <td>{{ passport.issue_date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Expiry Date</td>
+                            <td>{{ passport.expiry_date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Citizen ID</td>
+                            <td>{{ citizen.id }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Renewal Form -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat text-primary"></i> Renew Passport</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Submit a passport renewal request. Processing time is 4-6 weeks.</p>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Renewal Type</label>
+                            <select class="form-select" name="renewal_type" required>
+                                <option value="standard">Standard Renewal (4-6 weeks) - Free</option>
+                                <option value="express">Express Renewal (2 weeks) - $50</option>
+                                <option value="urgent">Urgent Renewal (5 days) - $150</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Reason for Renewal</label>
+                            <select class="form-select" name="reason" required>
+                                <option value="expiring">Passport expiring within 6 months</option>
+                                <option value="expired">Passport has expired</option>
+                                <option value="damaged">Passport damaged</option>
+                                <option value="pages">No more blank pages</option>
+                                <option value="name">Name change</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirm" required>
+                                <label class="form-check-label" for="confirm">
+                                    I confirm that the information provided is accurate
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Submit Renewal Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Cards -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-camera text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">Photo Requirements</h6>
+                    <small class="text-muted">Recent photo, white background, no glasses</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">Required Documents</h6>
+                    <small class="text-muted">Current passport, ID card, proof of address</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <i class="bi bi-clock text-primary" style="font-size: 2rem;"></i>
+                    <h6 class="mt-2">Processing Time</h6>
+                    <small class="text-muted">Standard: 4-6 weeks, Express: 2 weeks</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

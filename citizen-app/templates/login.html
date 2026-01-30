@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #1a5276 0%, #2e86de 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="text-center mb-4">
+                    <h1 class="text-white display-4 fw-bold">
+                        <i class="bi bi-building"></i>
+                    </h1>
+                    <h2 class="text-white">Model Citizen</h2>
+                    <p class="text-white-50">Local Government Services Portal</p>
+                </div>
+                
+                <div class="card shadow-lg">
+                    <div class="card-body p-4">
+                        <h4 class="card-title text-center mb-4">
+                            <i class="bi bi-person-badge text-primary"></i> CitID Login
+                        </h4>
+                        
+                        <form method="POST">
+                            <div class="mb-4">
+                                <label for="citizen_id" class="form-label">Citizen ID</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control form-control-lg" id="citizen_id" 
+                                           name="citizen_id" placeholder="Enter your CitID" required
+                                           autocomplete="off" autofocus>
+                                </div>
+                                <div class="form-text">Enter your unique Citizen ID to access services</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-box-arrow-in-right"></i> Sign In
+                            </button>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <p class="text-muted small mb-2">Demo CitIDs for testing:</p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <span class="badge bg-secondary">DEMO</span>
+                                <span class="badge bg-secondary">CIT001</span>
+                                <span class="badge bg-secondary">CIT002</span>
+                                <span class="badge bg-secondary">CIT003</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-center text-white-50 mt-4 small">
+                    <i class="bi bi-shield-check"></i> Secure government portal
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

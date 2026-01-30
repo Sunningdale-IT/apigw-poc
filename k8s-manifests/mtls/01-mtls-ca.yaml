@@ -1,0 +1,55 @@
+# Mutual TLS Certificate Authority Setup
+# This creates a private CA for issuing mTLS client certificates
+#
+# Components:
+# 1. Self-signed Issuer (bootstrap)
+# 2. CA Certificate
+# 3. CA Issuer (for issuing client certs)
+#
+# Note: Uses namespace-scoped Issuers to keep secrets in the application namespace
+---
+# Step 1: Self-signed issuer to bootstrap the CA
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: mtls-selfsigned-issuer
+  namespace: apigw-poc
+spec:
+  selfSigned: {}
+
+---
+# Step 2: CA Certificate (root of trust for mTLS)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mtls-ca
+  namespace: apigw-poc
+spec:
+  isCA: true
+  secretName: mtls-ca-secret
+  duration: 87600h  # 10 years
+  renewBefore: 8760h  # 1 year before expiry
+  subject:
+    organizations:
+      - "API Gateway PoC"
+    organizationalUnits:
+      - "mTLS Certificate Authority"
+  commonName: "apigw-poc-mtls-ca"
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: mtls-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+
+---
+# Step 3: Issuer using the CA to issue client certificates
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: mtls-ca-issuer
+  namespace: apigw-poc
+spec:
+  ca:
+    secretName: mtls-ca-secret

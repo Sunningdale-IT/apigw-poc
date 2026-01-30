@@ -1,0 +1,115 @@
+# Traefik mTLS Enforcement Configuration
+# This configures Traefik to require and validate client certificates
+# on a dedicated mTLS host (kong-mtls.<domain>).
+#
+# NOTE: Traefik requires all routers on the same host to use the same TLS options.
+# Therefore, mTLS routes use a separate subdomain: kong-mtls.<domain>
+#
+# When enabled, requests to kong-mtls.<domain> without a valid client certificate will be rejected.
+# Requests to kong.<domain> will continue to work without client certificates.
+---
+# TLSOption for mTLS on Kong ingress
+apiVersion: traefik.io/v1alpha1
+kind: TLSOption
+metadata:
+  name: mtls-strict
+  namespace: apigw-poc
+spec:
+  # Require client certificate
+  clientAuth:
+    # RequireAndVerifyClientCert = mTLS enforced
+    clientAuthType: RequireAndVerifyClientCert
+    # Reference to the CA secret for client certificate validation
+    secretNames:
+      - traefik-mtls-ca
+
+---
+# Middleware to pass client certificate info to backend
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: mtls-headers
+  namespace: apigw-poc
+spec:
+  passTLSClientCert:
+    pem: true
+    info:
+      notAfter: true
+      notBefore: true
+      sans: true
+      subject:
+        commonName: true
+        organization: true
+        organizationalUnit: true
+
+---
+# Certificate for mTLS endpoint
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kong-mtls-tls-cert
+  namespace: apigw-poc
+spec:
+  secretName: kong-mtls-tls-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - kong-mtls.jim00.pd.test-rig.nl
+
+---
+# IngressRoute for Kong with mTLS enforcement on dedicated subdomain
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kong-mtls-route
+  namespace: apigw-poc
+  labels:
+    app: kong-proxy
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # All routes on this host require mTLS
+    - match: Host(`kong-mtls.jim00.pd.test-rig.nl`) && PathPrefix(`/consumer`)
+      kind: Rule
+      middlewares:
+        - name: mtls-headers
+      services:
+        - name: kong-proxy
+          port: 8000
+    - match: Host(`kong-mtls.jim00.pd.test-rig.nl`) && PathPrefix(`/producer`)
+      kind: Rule
+      middlewares:
+        - name: mtls-headers
+      services:
+        - name: kong-proxy
+          port: 8000
+  tls:
+    secretName: kong-mtls-tls-cert
+    options:
+      name: mtls-strict
+      namespace: apigw-poc
+
+---
+# Standard IngressRoute for routes NOT requiring mTLS (restore original)
+# This uses the regular kong.* host without mTLS
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kong-standard-route
+  namespace: apigw-poc
+  labels:
+    app: kong-proxy
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # All routes accessible without mTLS
+    - match: Host(`kong.jim00.pd.test-rig.nl`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: kong-proxy
+          port: 8000
+  tls:
+    secretName: kong-tls-cert

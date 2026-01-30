@@ -1,0 +1,90 @@
+# Kong mTLS Configuration
+# This configures Kong to require and validate client certificates
+#
+# NOTE: This is applied separately from the Helm chart to allow
+# flexible mTLS configuration without chart modifications.
+---
+# ConfigMap containing the CA certificate for client validation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-mtls-ca
+  namespace: apigw-poc
+  labels:
+    app: kong-proxy
+data:
+  # This will be populated by the setup script from the CA secret
+  # Placeholder - replaced by scripts/setup-mtls.sh
+  ca.crt: |
+    # CA certificate will be injected here
+
+---
+# Kong declarative configuration with mTLS plugin
+# This extends the base kong.yml with mTLS requirements
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-mtls-plugin-config
+  namespace: apigw-poc
+  labels:
+    app: kong-proxy
+data:
+  # Plugin configuration for mTLS on the consumer route
+  # The mtls-auth plugin validates client certificates
+  mtls-config.yml: |
+    # mTLS Authentication Plugin Configuration
+    # Applied to routes that require client certificate authentication
+    #
+    # This configuration:
+    # 1. Requires a valid client certificate
+    # 2. Validates against the configured CA
+    # 3. Extracts client identity for logging/authorization
+    
+    plugins:
+      - name: mtls-auth
+        route: consumer-route
+        config:
+          # CA certificates for validation (PEM format)
+          # Referenced from the mounted secret
+          ca_certificates:
+            - mtls-ca
+          # Skip certificate revocation check (no CRL/OCSP in this PoC)
+          skip_consumer_lookup: false
+          # Certificate verification depth
+          cert_chain_depth: 1
+          # Require valid certificate
+          anonymous: null
+    
+    # CA Certificate entity for mTLS validation
+    ca_certificates:
+      - id: mtls-ca
+        cert: |
+          # Injected from mtls-ca-secret by setup script
+
+---
+# Patch for Kong deployment to mount mTLS CA
+# Apply with: kubectl patch deployment kong-proxy -n apigw-poc --patch-file this-file.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-proxy-mtls-patch
+  namespace: apigw-poc
+spec:
+  template:
+    spec:
+      volumes:
+        - name: mtls-ca-volume
+          secret:
+            secretName: mtls-ca-secret
+            items:
+              - key: ca.crt
+                path: ca.crt
+      containers:
+        - name: kong
+          volumeMounts:
+            - name: mtls-ca-volume
+              mountPath: /etc/kong/mtls
+              readOnly: true
+          env:
+            - name: KONG_LUA_SSL_TRUSTED_CERTIFICATE
+              value: "/etc/kong/mtls/ca.crt"

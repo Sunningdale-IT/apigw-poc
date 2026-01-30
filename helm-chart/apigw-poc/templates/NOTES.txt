@@ -1,0 +1,48 @@
+## Access URLs
+
+- Producer: https://producer.{{ .Values.global.domainSuffix }}
+- Consumer: https://consumer.{{ .Values.global.domainSuffix }}
+- Kong: https://kong.{{ .Values.global.domainSuffix }}
+{{- if and .Values.kong.enabled .Values.kong.managerIngress.enabled }}
+- Kong Manager (OSS): https://kong-admin.{{ .Values.global.domainSuffix }}
+{{- end }}
+
+## Login (Django Admin)
+
+Producer Django admin:
+- URL: https://producer.{{ .Values.global.domainSuffix }}/admin
+- Username: {{ .Values.producer.admin.username }}
+- Password: {{ .Values.producer.admin.password }}
+
+Consumer Django admin:
+- URL: https://consumer.{{ .Values.global.domainSuffix }}/admin
+- Username: {{ .Values.consumer.admin.username }}
+- Password: {{ .Values.consumer.admin.password }}
+
+Note: credentials are configured via Helm values and stored in Kubernetes Secrets:
+- {{ .Release.Namespace }}/producer-admin-credentials
+- {{ .Release.Namespace }}/consumer-admin-credentials
+
+{{- if and .Values.kong.enabled .Values.kong.adminApiIngress.enabled }}
+WARNING: Kong Admin API is exposed at https://kong-admin-api.{{ .Values.global.domainSuffix }} (secure/disable for real environments).
+{{- end }}
+
+{{- if eq (include "apigw-poc.kong.keycloak.enabledReady" .) "true" }}
+## Keycloak (OIDC) protection for Kong Manager (via oauth2-proxy)
+
+This chart protects:
+- https://kong-admin.{{ .Values.global.domainSuffix }}
+- https://kong-admin-api.{{ .Values.global.domainSuffix }}
+
+You must configure a **confidential** Keycloak client with these redirect URIs:
+- https://kong-admin.{{ .Values.global.domainSuffix }}/oauth2/callback
+- https://kong-admin-api.{{ .Values.global.domainSuffix }}/oauth2/callback
+
+Then set:
+- kong.keycloakAuth.issuerUrl
+- kong.keycloakAuth.clientSecret
+
+Computed default issuer (if kong.keycloakAuth.issuerUrl is empty):
+- {{ include "apigw-poc.kong.keycloak.issuerUrl" . }}
+{{- end }}
+
