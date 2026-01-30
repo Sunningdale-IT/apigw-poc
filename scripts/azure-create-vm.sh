@@ -579,12 +579,16 @@ set -e
 
 cd /opt/dogcatcher
 
-# Clone the repository (replace with your actual repo)
-if [ ! -d "apigw-poc" ]; then
+# Clone the repository from public GitHub
+if [ -d "apigw-poc" ]; then
+    echo "Repository exists, pulling latest changes..."
+    cd apigw-poc
+    git pull
+else
+    echo "Cloning repository..."
     git clone https://github.com/Sunningdale-IT/apigw-poc.git
+    cd apigw-poc
 fi
-
-cd apigw-poc
 
 # Generate random secrets
 DOGCATCHER_SECRET=$(openssl rand -hex 32)
