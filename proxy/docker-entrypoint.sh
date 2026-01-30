@@ -26,9 +26,14 @@ echo "  mTLS: ${ENABLE_MTLS}"
 echo "=============================================="
 
 # Select configuration based on mode
+# Skip if nginx.conf is mounted read-only (e.g., in docker-compose)
 if [[ "${PROXY_MODE}" == "prod" ]]; then
     echo "Using production configuration..."
-    cp /etc/nginx/nginx.conf.prod /etc/nginx/nginx.conf
+    if [[ -w /etc/nginx/nginx.conf ]]; then
+        cat /etc/nginx/nginx.conf.prod > /etc/nginx/nginx.conf
+    else
+        echo "(nginx.conf is read-only, assuming already configured)"
+    fi
 else
     echo "Using development configuration..."
     # nginx-dev.conf is already the default
