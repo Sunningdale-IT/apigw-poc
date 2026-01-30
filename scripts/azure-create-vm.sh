@@ -424,13 +424,6 @@ RUNBOOK_EOF
     
     rm -f "${runbook_script}"
     
-    # Enable system-assigned managed identity for automation account
-    log_info "Enabling managed identity..."
-    run_cmd az automation account identity assign \
-        --automation-account-name "${automation_account}" \
-        --resource-group "${RESOURCE_GROUP}" \
-        --output none
-    
     # Get subscription ID
     local subscription_id
     if [[ "${DRY_RUN}" == true ]]; then
@@ -439,18 +432,44 @@ RUNBOOK_EOF
         subscription_id=$(az account show --query id -o tsv)
     fi
     
+    # Enable system-assigned managed identity for automation account using REST API
+    log_info "Enabling managed identity..."
+    if [[ "${DRY_RUN}" != true ]]; then
+        az rest --method PATCH \
+            --uri "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Automation/automationAccounts/${automation_account}?api-version=2021-06-22" \
+            --body '{"identity":{"type":"SystemAssigned"}}' \
+            --output none
+        
+        # Wait for identity to be created
+        sleep 10
+    fi
+    
     # Get the automation account's principal ID
     local principal_id
     if [[ "${DRY_RUN}" == true ]]; then
         principal_id="<PRINCIPAL_ID>"
     else
-        principal_id=$(az automation account show \
-            --name "${automation_account}" \
-            --resource-group "${RESOURCE_GROUP}" \
-            --query identity.principalId -o tsv)
+        # Retry a few times as identity propagation can take time
+        local retry=0
+        while [[ ${retry} -lt 6 ]]; do
+            principal_id=$(az rest --method GET \
+                --uri "https://management.azure.com/subscriptions/${subscription_id}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Automation/automationAccounts/${automation_account}?api-version=2021-06-22" \
+                --query 'identity.principalId' -o tsv 2>/dev/null || echo "")
+            
+            if [[ -n "${principal_id}" ]] && [[ "${principal_id}" != "null" ]]; then
+                break
+            fi
+            
+            log_info "Waiting for managed identity to be ready..."
+            sleep 10
+            ((retry++))
+        done
         
-        # Wait for identity propagation
-        sleep 30
+        if [[ -z "${principal_id}" ]] || [[ "${principal_id}" == "null" ]]; then
+            log_warn "Could not get managed identity. Auto-delete may not work."
+            log_warn "You may need to manually configure the automation account."
+            return
+        fi
     fi
     
     # Assign Contributor role to the managed identity for the resource group
@@ -472,11 +491,12 @@ RUNBOOK_EOF
         start_time="<START_TIME>"
     else
         # Get current UTC time and create schedule start time
+        # Use arithmetic expansion with 10# to force decimal (avoid octal issues with leading zeros)
         local now_utc
         now_utc=$(date -u +%H%M)
         local schedule_utc="${hour}${minute}"
         
-        if [[ "${now_utc}" -ge "${schedule_utc}" ]]; then
+        if (( 10#${now_utc} >= 10#${schedule_utc} )); then
             # Schedule for tomorrow
             start_time=$(date -u -v+1d "+%Y-%m-%dT${AUTO_DELETE_TIME}:00Z" 2>/dev/null || \
                         date -u -d "+1 day" "+%Y-%m-%dT${AUTO_DELETE_TIME}:00Z")
