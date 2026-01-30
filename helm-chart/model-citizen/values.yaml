@@ -1,0 +1,125 @@
+# Default values for model-citizen
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: ""  # Set to your Docker Hub username/model-citizen
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Application configuration
+config:
+  # Secret key for Flask sessions (generate a secure random string for production)
+  secretKey: "change-this-in-production"
+  # Enable Flask debug mode (set to false in production)
+  flaskDebug: "false"
+  # API Gateway URL - Kong proxy that routes to Dogcatcher API
+  # Format: http://<kong-proxy-service>.<namespace>.svc.cluster.local/<route-path>
+  apiGatewayUrl: "http://kong-kong-proxy.kong.svc.cluster.local/dogcatcher/api"
+  # Dogcatcher public URL (accessible from browser for images)
+  dogcatcherPublicUrl: "https://dogcatcher.example.com"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: citizen.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: citizen-tls
+  #    hosts:
+  #      - citizen.example.com
+
+# Traefik IngressRoute (alternative to standard Ingress)
+traefikIngress:
+  enabled: false
+  entryPoints:
+    - websecure
+  host: citizen.example.com
+  # TLS configuration
+  tls:
+    enabled: false
+    secretName: ""
+    # Use cert-manager
+    certResolver: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  path: /
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Additional environment variables
+extraEnv: []
+  # - name: EXTRA_VAR
+  #   value: "extra-value"
+
+# Network policy
+networkPolicy:
+  enabled: false
+  # Allow ingress from specific namespaces
+  allowFrom: []
+  # - namespaceSelector:
+  #     matchLabels:
+  #       name: ingress-nginx

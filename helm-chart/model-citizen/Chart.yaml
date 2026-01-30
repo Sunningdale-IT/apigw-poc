@@ -1,0 +1,14 @@
+apiVersion: v2
+name: model-citizen
+description: A Helm chart for Model Citizen - Local Government Services Portal
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - citizen
+  - government
+  - portal
+  - flask
+maintainers:
+  - name: Sunningdale IT
+home: https://github.com/Sunningdale-IT/apigw-poc

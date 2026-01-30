@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Driving License{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item active text-white">Driving License</li>
+            </ol>
+        </nav>
+        <h1><i class="bi bi-car-front"></i> Driving License</h1>
+        <p class="mb-0 opacity-75">View and renew your driving license</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row">
+        <!-- Current License Info -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-credit-card text-primary"></i> Current License</h5>
+                </div>
+                <div class="card-body">
+                    <div class="border rounded p-3 mb-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="text-white">
+                            <small class="opacity-75">DRIVING LICENSE</small>
+                            <h4 class="mb-0">{{ citizen.name }}</h4>
+                            <p class="mb-2 opacity-75">{{ license.number }}</p>
+                            <div class="d-flex justify-content-between">
+                                <span>Class: {{ license.class }}</span>
+                                <span class="status-badge status-{{ license.status|lower }}">{{ license.status }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted">License Number</td>
+                            <td class="fw-bold">{{ license.number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">License Class</td>
+                            <td>{{ license.class }} (Cars, Light Vehicles)</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Issue Date</td>
+                            <td>{{ license.issue_date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Expiry Date</td>
+                            <td>{{ license.expiry_date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Penalty Points</td>
+                            <td><span class="badge bg-success">{{ license.points }} points</span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Renewal Form -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat text-primary"></i> Renew License</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Renew your driving license online. New license will be mailed within 10 business days.</p>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Renewal Reason</label>
+                            <select class="form-select" name="reason" required>
+                                <option value="expiring">License expiring within 90 days</option>
+                                <option value="expired">License has expired</option>
+                                <option value="lost">Lost or stolen</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="address">Address change</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Medical Declaration</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="medical" value="no_change" id="med1" checked>
+                                <label class="form-check-label" for="med1">
+                                    No change to medical condition
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="medical" value="change" id="med2">
+                                <label class="form-check-label" for="med2">
+                                    Medical condition has changed (will require review)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="eyesight" required>
+                                <label class="form-check-label" for="eyesight">
+                                    I confirm I meet the eyesight requirements for driving
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirm" required>
+                                <label class="form-check-label" for="confirm">
+                                    I declare that the information provided is true and accurate
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Submit Renewal
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Services -->
+    <h5 class="mt-4 mb-3">Other License Services</h5>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <i class="bi bi-plus-circle text-primary" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-0">Add Category</h6>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <i class="bi bi-file-text text-primary" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-0">View Points</h6>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <i class="bi bi-geo-alt text-primary" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-0">Update Address</h6>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <i class="bi bi-download text-primary" style="font-size: 2rem;"></i>
+                <h6 class="mt-2 mb-0">Download PDF</h6>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

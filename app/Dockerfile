@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
@@ -16,11 +17,11 @@ RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted
 # Copy application files
 COPY . .
 
-# Create upload directory
-RUN mkdir -p /app/static/uploads
+# Create directories
+RUN mkdir -p /app/static/uploads /app/certs
 
-# Expose port
-EXPOSE 5000
+# Expose ports (5000 for HTTP, 5443 for HTTPS/mTLS)
+EXPOSE 5000 5443
 
 # Run the application
 CMD ["python", "app.py"]

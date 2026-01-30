@@ -1,0 +1,43 @@
+🏛️ Model Citizen - Local Government Services Portal
+
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named: {{ .Release.Name }}
+
+1. Get the application URL:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ (first $host.paths).path }}
+{{- end }}
+{{- else if .Values.traefikIngress.enabled }}
+  http{{ if .Values.traefikIngress.tls.enabled }}s{{ end }}://{{ .Values.traefikIngress.host }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "model-citizen.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "model-citizen.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "model-citizen.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "model-citizen.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "Visit http://127.0.0.1:8080 to access Model Citizen"
+{{- end }}
+
+2. Demo login credentials:
+   Use any of these CitIDs: DEMO, CIT001, CIT002, CIT003
+
+3. Available Services:
+   - Passport Renewal (mocked)
+   - Driving License Renewal (mocked)
+   - Building Permits (mocked)
+   - Trash Collection Schedule (mocked)
+   - Found Dogs (live integration with Dogcatcher API)
+
+4. Configuration:
+   - Dogcatcher API URL: {{ .Values.config.dogcatcherApiUrl }}
+   - Dogcatcher Public URL: {{ .Values.config.dogcatcherPublicUrl }}
+
+📋 For more information, check:
+   kubectl get all -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ .Release.Namespace }}

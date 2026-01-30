@@ -1,0 +1,20 @@
+{{- if eq (include "apigw-poc.kong.keycloak.enabledReady" .) "true" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-oauth2-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "apigw-poc.kong.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: kong-oauth2-proxy
+  ports:
+  - name: http
+    port: 4180
+    targetPort: 4180
+    protocol: TCP
+{{- end }}
+

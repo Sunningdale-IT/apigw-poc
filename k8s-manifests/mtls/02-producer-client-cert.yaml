@@ -1,0 +1,42 @@
+# Producer (3rd Party) Client Certificate
+# This certificate is used by the Producer to authenticate to Kong API Gateway
+#
+# The certificate will be stored in a Kubernetes Secret and can be extracted
+# for use by external clients.
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: producer-mtls-client
+  namespace: apigw-poc
+spec:
+  # Secret where the certificate will be stored
+  secretName: producer-mtls-client-cert
+  
+  # Certificate validity
+  duration: 2160h    # 90 days
+  renewBefore: 360h  # 15 days before expiry
+  
+  # Subject information (identifies the 3rd party)
+  subject:
+    organizations:
+      - "Producer Service"
+    organizationalUnits:
+      - "3rd Party Integration"
+  commonName: "producer-client"
+  
+  # Key configuration
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  
+  # Client authentication usage
+  usages:
+    - client auth
+    - digital signature
+  
+  # Use the mTLS CA to issue this certificate
+  issuerRef:
+    name: mtls-ca-issuer
+    kind: Issuer
+    group: cert-manager.io

@@ -1,0 +1,28 @@
+{{- if .Values.traefikIngress.enabled -}}
+{{- $fullName := include "model-citizen.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "model-citizen.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.traefikIngress.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.traefikIngress.host }}`)
+      services:
+        - name: {{ $fullName }}
+          port: {{ $svcPort }}
+  {{- if .Values.traefikIngress.tls.enabled }}
+  tls:
+    {{- if .Values.traefikIngress.tls.secretName }}
+    secretName: {{ .Values.traefikIngress.tls.secretName }}
+    {{- end }}
+    {{- if .Values.traefikIngress.tls.certResolver }}
+    certResolver: {{ .Values.traefikIngress.tls.certResolver }}
+    {{- end }}
+  {{- end }}
+{{- end }}

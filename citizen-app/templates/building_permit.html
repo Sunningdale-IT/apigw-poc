@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Building Permits{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item active text-white">Building Permits</li>
+            </ol>
+        </nav>
+        <h1><i class="bi bi-house-gear"></i> Building Permits</h1>
+        <p class="mb-0 opacity-75">Apply for and track building permits</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <div class="row">
+        <!-- Application Form -->
+        <div class="col-lg-7 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle text-primary"></i> New Permit Application</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Project Type</label>
+                            <select class="form-select" name="project_type" required>
+                                <option value="">Select project type...</option>
+                                <option value="extension">Home Extension</option>
+                                <option value="renovation">Interior Renovation</option>
+                                <option value="garage">Garage/Outbuilding</option>
+                                <option value="fence">Fence/Wall</option>
+                                <option value="pool">Swimming Pool</option>
+                                <option value="solar">Solar Panels</option>
+                                <option value="demolition">Demolition</option>
+                                <option value="new_build">New Construction</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Property Address</label>
+                            <input type="text" class="form-control" value="{{ citizen.address }}" readonly>
+                            <div class="form-text">Using registered address. Contact us to update.</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Estimated Cost ($)</label>
+                                <input type="number" class="form-control" name="cost" placeholder="e.g., 50000" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Project Duration</label>
+                                <select class="form-select" name="duration" required>
+                                    <option value="1-3">1-3 months</option>
+                                    <option value="3-6">3-6 months</option>
+                                    <option value="6-12">6-12 months</option>
+                                    <option value="12+">Over 12 months</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Project Description</label>
+                            <textarea class="form-control" name="description" rows="4" 
+                                      placeholder="Describe your project in detail, including dimensions, materials, and any changes to the structure..." required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Upload Plans (optional)</label>
+                            <input type="file" class="form-control" name="plans" accept=".pdf,.jpg,.png">
+                            <div class="form-text">Accepted formats: PDF, JPG, PNG (max 10MB)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirm" required>
+                                <label class="form-check-label" for="confirm">
+                                    I confirm that I am the property owner or authorized representative
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Submit Application
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Existing Permits -->
+        <div class="col-lg-5 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-list-check text-primary"></i> Your Permits</h5>
+                </div>
+                <div class="card-body">
+                    {% if permits %}
+                        {% for permit in permits %}
+                        <div class="border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ permit.type }}</h6>
+                                    <small class="text-muted">{{ permit.number }}</small>
+                                </div>
+                                <span class="status-badge status-{{ permit.status|lower }}">{{ permit.status }}</span>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-calendar"></i> {{ permit.date }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-4">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i><br>
+                            No permit applications found
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Processing Info -->
+            <div class="card mt-4 bg-light">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle text-primary"></i> Processing Information</h6>
+                    <ul class="small mb-0">
+                        <li>Standard review: 15-30 business days</li>
+                        <li>Site inspection may be required</li>
+                        <li>Fees vary by project type and value</li>
+                        <li>Permits valid for 12 months from approval</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
