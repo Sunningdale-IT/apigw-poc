@@ -594,6 +594,9 @@ fi
 DOGCATCHER_SECRET=$(openssl rand -hex 32)
 CITIZEN_SECRET=$(openssl rand -hex 32)
 
+# Fixed hostname for dogcatcher
+DOMAIN="dogcatcher.jim00.pd.test-rig.nl"
+
 # Create environment file for production
 cat > .env << EOF
 # Dogcatcher API Configuration
@@ -606,10 +609,11 @@ FLASK_DEBUG=false
 PROXY_MODE=prod
 ENABLE_HTTPS=true
 ENABLE_MTLS=false
-DOMAIN=${PUBLIC_IP}
+DOMAIN=${DOMAIN}
 
 # Citizen App Configuration
 CITIZEN_SECRET_KEY=${CITIZEN_SECRET}
+DOGCATCHER_PUBLIC_URL=https://${DOMAIN}
 EOF
 
 # Create directories for certificates
@@ -621,8 +625,9 @@ if [ ! -f certs/ssl/server.crt ]; then
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout certs/ssl/server.key \
         -out certs/ssl/server.crt \
-        -subj "/CN=${PUBLIC_IP}/O=Dogcatcher/C=GB"
-    echo "Self-signed certificate created for ${PUBLIC_IP}"
+        -subj "/CN=${DOMAIN}/O=Dogcatcher/C=GB" \
+        -addext "subjectAltName=DNS:${DOMAIN},IP:${PUBLIC_IP}"
+    echo "Self-signed certificate created for ${DOMAIN}"
 fi
 
 # Create dummy CA cert for mTLS config (required by nginx.conf)
@@ -642,11 +647,12 @@ docker compose -f docker-compose.yml -f docker-compose.azure.yml ps
 
 echo ""
 echo "Application is now accessible at:"
-echo "  https://${PUBLIC_IP}/"
-echo "  https://${PUBLIC_IP}/api/docs"
+echo "  https://${DOMAIN}/"
+echo "  https://${DOMAIN}/api/docs"
+echo "  (IP: ${PUBLIC_IP})"
 echo ""
 echo "Note: Browser will show certificate warning (self-signed)."
-echo "Run setup-letsencrypt.sh with a domain for trusted certs."
+echo "Run setup-letsencrypt.sh for trusted Let's Encrypt certs."
 REMOTE_SCRIPT
     
     log_success "Dogcatcher application installed"
@@ -682,23 +688,28 @@ print_summary() {
     echo "  Docker Status (after cloud-init completes):"
     echo "    ssh ${ADMIN_USER}@${public_ip} 'docker --version'"
     echo ""
+    local domain="dogcatcher.jim00.pd.test-rig.nl"
+    
     if [[ "${INSTALL_APP}" == true ]]; then
         echo "  Application URLs (HTTPS on port 443):"
-        echo "    https://${public_ip}/           (Web UI)"
-        echo "    https://${public_ip}/api/docs   (Swagger API)"
-        echo "    https://${public_ip}/plain/dogs/ (Plain API)"
+        echo "    https://${domain}/           (Web UI)"
+        echo "    https://${domain}/api/docs   (Swagger API)"
+        echo "    https://${domain}/plain/dogs/ (Plain API)"
         echo ""
-        echo "  Note: Browser will warn about self-signed certificate."
-        echo "  For trusted certs, configure DNS and run setup-letsencrypt.sh"
+        echo "  Public IP: ${public_ip}"
+        echo "  Note: Ensure DNS A record points ${domain} to ${public_ip}"
+        echo ""
+        echo "  For trusted certs, run: setup-letsencrypt.sh --domain ${domain}"
         echo ""
     else
         echo "  Deploy Dogcatcher:"
         echo "    1. SSH to the VM"
-        echo "    2. git clone <your-repo> /opt/dogcatcher/apigw-poc"
+        echo "    2. git clone https://github.com/Sunningdale-IT/apigw-poc.git /opt/dogcatcher/apigw-poc"
         echo "    3. cd /opt/dogcatcher/apigw-poc"
         echo "    4. docker compose -f docker-compose.yml -f docker-compose.azure.yml up -d"
         echo ""
-        echo "  The app will be accessible at https://${public_ip}/"
+        echo "  The app will be accessible at https://${domain}/"
+        echo "  (Ensure DNS A record points to ${public_ip})"
         echo ""
     fi
     if [[ "${AUTO_DELETE}" == true ]]; then
