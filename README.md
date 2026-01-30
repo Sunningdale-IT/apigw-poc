@@ -1,257 +1,378 @@
-# 🐕 City Dog Catcher Application
+# Dogcatcher API Gateway POC
 
-A web-based application for city dog catchers to manage information about caught dogs. The application allows dog catchers to record details of found dogs and browse the database through a user-friendly web interface.
+A proof-of-concept demonstrating API Gateway patterns with a Flask-based dog catcher application. This project showcases multi-protocol authentication (API keys, mTLS, JWT, OIDC), reverse proxy configuration, and cloud deployment automation.
+
+## Architecture Overview
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Model Citizen  │────▶│   Nginx Proxy   │────▶│  Dogcatcher API │
+│      App        │     │  (Auth Gateway) │     │    (Flask)      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │                        │
+                               │                        ▼
+                               │                ┌─────────────────┐
+                               │                │   PostgreSQL    │
+                               │                │    Database     │
+                               ▼                └─────────────────┘
+                        ┌─────────────────┐
+                        │   Let's Encrypt │
+                        │   (HTTPS certs) │
+                        └─────────────────┘
+```
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| **Dogcatcher API** | Flask REST API with Swagger documentation for managing found dogs |
+| **Model Citizen App** | Citizen portal that consumes the Dogcatcher API |
+| **Nginx Proxy** | Reverse proxy supporting multiple auth protocols |
+| **PostgreSQL** | Database for storing dog records |
 
 ## Features
 
-- **Add Dog Entries**: Record details of caught dogs including:
-  - Name
-  - GPS coordinates (latitude/longitude) where found
-  - Breed
-  - Photo upload
-  - Additional comments
-- **Browse Database**: View all caught dogs with their information in an easy-to-browse interface
-- **Photo Management**: Upload and view photos of caught dogs
-- **Location Mapping**: Direct links to Google Maps for found locations
-- **Containerized Deployment**: Easy deployment using Docker Compose
-
-## Prerequisites
-
-- Docker (version 20.10 or later)
-- Docker Compose (version 2.0 or later)
+- **REST API** with Swagger/OpenAPI documentation
+- **Multi-protocol authentication**: Plain, API Key, mTLS, JWT, OIDC
+- **Containerized deployment** with Docker Compose
+- **Azure VM automation** with one-command deployment
+- **Auto-generated SSL certificates** (self-signed or Let's Encrypt)
+- **Automatic DNS updates** in Azure DNS
+- **Scheduled resource cleanup** for test environments
 
 ## Quick Start
 
-### 1. Clone the Repository
+### Prerequisites
+
+- Docker (version 20.10+)
+- Docker Compose (version 2.0+)
+- For Azure deployment: Azure CLI (`az`) installed and logged in
+
+### Local Development
 
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/Sunningdale-IT/apigw-poc.git
 cd apigw-poc
+
+# Copy environment template
+cp .env.example .env
+
+# Start all services
+docker compose up -d
+
+# Access the application
+# Swagger API: http://localhost:8080/api/docs
+# Web UI: http://localhost:8080/
 ```
 
-### 2. Start the Application
+### Azure Cloud Deployment
+
+Deploy the complete stack to an Azure VM with a single command:
 
 ```bash
-docker-compose up -d
+# Full deployment with app installation and DNS update
+./scripts/azure-create-vm.sh --install-app --dns-rg <your-dns-resource-group>
+
+# Example:
+./scripts/azure-create-vm.sh --install-app --dns-rg dns-resource-group
 ```
 
 This will:
-- Build the Flask web application container
-- Start a PostgreSQL database container
-- Create the necessary database tables
-- Start the web server on port 5000
+1. Create an Azure resource group and VM (2 vCPU, 4GB RAM, Ubuntu 22.04)
+2. Install Docker and Docker Compose via cloud-init
+3. Update DNS record: `dogcatcher.jim00.pd.test-rig.nl` → VM IP
+4. Clone this repository and start the application
+5. Generate SSL certificates for HTTPS
+6. Schedule automatic deletion at 19:00 UTC daily
 
-### 3. Access the Application
+#### Azure VM Script Options
 
-Open your web browser and navigate to:
+```bash
+./scripts/azure-create-vm.sh [OPTIONS]
 
+Options:
+  -n, --name            VM name (default: dogcatcher-vm)
+  -g, --resource-group  Resource group name (default: dogcatcher-rg)
+  -l, --location        Azure region (default: uksouth)
+  -s, --size            VM size (default: Standard_B2s)
+  --ssh-key             Path to SSH public key
+  --admin-user          Admin username (default: azureuser)
+  --dns-rg GROUP        Resource group containing Azure DNS zone
+  --no-dns              Skip DNS record update
+  --install-app         Clone and start app after VM creation
+  --auto-delete TIME    Schedule daily deletion (default: 19:00 UTC)
+  --no-auto-delete      Disable auto-deletion
+  --open-http           Also open ports 8080 and 8443
+  --dry-run             Show commands without executing
+  -h, --help            Show help message
 ```
-http://localhost:5000
+
+#### After Deployment
+
+Access the application at:
+- **Web UI**: https://dogcatcher.jim00.pd.test-rig.nl/
+- **Swagger API**: https://dogcatcher.jim00.pd.test-rig.nl/api/docs
+- **Health Check**: https://dogcatcher.jim00.pd.test-rig.nl/health
+
+SSH to the VM:
+```bash
+ssh azureuser@dogcatcher.jim00.pd.test-rig.nl
 ```
 
-## Usage
+## API Documentation
 
-### Adding a Dog
+### Swagger UI
 
-1. Click on "Add Dog" in the navigation menu
-2. Fill in the form with the dog's details:
-   - **Name**: Enter the dog's name (required)
-   - **Breed**: Specify the breed (required)
-   - **Latitude/Longitude**: Enter GPS coordinates where the dog was found (required)
-   - **Photo**: Upload a photo of the dog (optional, max 16MB)
-   - **Comments**: Add any additional notes (optional)
-3. Click "Submit Dog Entry"
+Access the interactive API documentation at `/api/docs` (e.g., https://dogcatcher.jim00.pd.test-rig.nl/api/docs)
 
-### Finding GPS Coordinates
+### API Endpoints
 
-You can obtain GPS coordinates using:
-- **Google Maps**: Right-click on a location and copy the coordinates
-- **Smartphone GPS**: Use a location-sharing app or GPS coordinates app
-- **GPS Device**: Direct reading from the device
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dogs/` | List all dogs |
+| POST | `/api/dogs/` | Add a new dog |
+| GET | `/api/dogs/{id}` | Get dog by ID |
+| DELETE | `/api/dogs/{id}` | Delete a dog |
+| GET | `/api/dogs/export` | Export all data |
+| GET | `/api/dogs/{id}/photo` | Download dog photo |
 
-Example coordinates:
-- Latitude: 51.5074 (London)
-- Longitude: -0.1278 (London)
+### Authentication
 
-### Browsing Dogs
+API requests require an API key header when `API_KEY_REQUIRED=true`:
 
-1. Click on "Browse Dogs" in the navigation menu
-2. View all caught dogs displayed as cards
-3. Each card shows:
-   - Dog photo (if uploaded)
-   - Name and breed
-   - GPS coordinates with link to Google Maps
-   - Date and time caught
-   - Comments
-4. Click on the location coordinates to view the exact spot on Google Maps
-5. Use the "Delete Entry" button to remove a dog from the database
+```bash
+curl -H "X-API-Key: demo-api-key-12345" https://dogcatcher.jim00.pd.test-rig.nl/plain/dogs/
+```
+
+## Multi-Protocol Authentication Routes
+
+The Nginx proxy supports different authentication methods via URL paths:
+
+| Route | Auth Method | Description |
+|-------|-------------|-------------|
+| `/plain/*` | None | Direct access (for testing) |
+| `/apikey/*` | API Key | Requires `X-API-Key` header |
+| `/mtls/*` | mTLS | Requires client certificate |
+| `/jwt/*` | JWT | Requires valid JWT token |
+| `/oidc/*` | OIDC | OAuth2/OpenID Connect |
+
+Example:
+```bash
+# Plain access
+curl -k https://dogcatcher.jim00.pd.test-rig.nl/plain/dogs/
+
+# API key authentication
+curl -k -H "X-API-Key: your-key" https://dogcatcher.jim00.pd.test-rig.nl/apikey/dogs/
+```
 
 ## Project Structure
 
 ```
 .
-├── app/                      # Application directory
-│   ├── app.py               # Main Flask application
-│   ├── requirements.txt     # Python dependencies
-│   ├── Dockerfile           # Docker image for web app
-│   ├── static/              # Static files
-│   │   └── uploads/         # Dog photo uploads
-│   └── templates/           # HTML templates
-│       ├── base.html        # Base template
-│       ├── index.html       # Home page
-│       ├── admin.html       # Add dog form
-│       └── browse.html      # Browse dogs page
-├── docker-compose.yml       # Docker Compose configuration
-└── README.md               # This file
+├── app/                          # Dogcatcher Flask API
+│   ├── app.py                    # Main application
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── templates/                # HTML templates
+├── citizen-app/                  # Model Citizen Flask app
+│   ├── app.py
+│   ├── Dockerfile
+│   └── templates/
+├── proxy/                        # Nginx reverse proxy
+│   ├── Dockerfile
+│   ├── nginx.conf                # Production config
+│   ├── nginx-dev.conf            # Development config
+│   ├── docker-entrypoint.sh
+│   └── conf.d/
+│       ├── proxy_routes.conf     # Auth route definitions
+│       └── proxy_common.conf     # Common proxy settings
+├── scripts/                      # Automation scripts
+│   ├── azure-create-vm.sh        # Azure VM deployment
+│   ├── setup-letsencrypt.sh      # Let's Encrypt setup
+│   ├── generate-mtls-certs.sh    # mTLS certificate generation
+│   ├── docker-build-push.sh      # Build and push images
+│   └── start-local.sh            # Local development startup
+├── helm-chart/                   # Kubernetes Helm charts
+│   ├── model-citizen/
+│   └── apigw-poc/
+├── k8s-manifests/                # Kubernetes manifests
+│   └── mtls/
+├── docs/                         # Additional documentation
+│   ├── KONG-DEPLOYMENT.md
+│   ├── KONG-MTLS-SETUP.md
+│   ├── LETSENCRYPT-SETUP.md
+│   ├── MTLS-SETUP.md
+│   └── PROXY-MULTI-AUTH.md
+├── docker-compose.yml            # Development compose file
+├── docker-compose.azure.yml      # Azure/production overrides
+├── .env.example                  # Environment template
+└── README.md
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-The application uses the following environment variables (configured in docker-compose.yml):
+Copy `.env.example` to `.env` and configure:
 
-**Database:**
-- `POSTGRES_DB`: Database name (default: dogcatcher)
-- `POSTGRES_USER`: Database user (default: dogcatcher)
-- `POSTGRES_PASSWORD`: Database password (default: dogcatcher123)
+```bash
+# Dogcatcher API
+DOGCATCHER_SECRET_KEY=<random-32-char-hex>
+DOGCATCHER_API_KEYS=key1,key2,key3
+API_KEY_REQUIRED=true
+FLASK_DEBUG=false
 
-**Web Application:**
-- `DATABASE_URL`: PostgreSQL connection string
-- `SECRET_KEY`: Flask secret key for sessions (change in production!)
+# Proxy
+PROXY_MODE=prod              # 'dev' or 'prod'
+ENABLE_HTTPS=true
+ENABLE_MTLS=false
+DOMAIN=dogcatcher.jim00.pd.test-rig.nl
+
+# Model Citizen App
+CITIZEN_SECRET_KEY=<random-32-char-hex>
+DOGCATCHER_PUBLIC_URL=https://dogcatcher.jim00.pd.test-rig.nl
+```
 
 ### Ports
 
-- **Web Application**: `5000` (mapped to host port 5000)
-- **PostgreSQL Database**: `5432` (mapped to host port 5432)
+| Port | Service | Description |
+|------|---------|-------------|
+| 80 | Proxy | HTTP (redirects to HTTPS) |
+| 443 | Proxy | HTTPS (main access) |
+| 8443 | Proxy | mTLS (strict client cert) |
+| 5001 | Dogcatcher | Direct API access (dev) |
+| 5002 | Model Citizen | Direct app access (dev) |
+| 5432 | PostgreSQL | Database |
+
+## Let's Encrypt SSL Certificates
+
+For production, obtain trusted SSL certificates:
+
+```bash
+# SSH to the VM
+ssh azureuser@dogcatcher.jim00.pd.test-rig.nl
+
+# Run Let's Encrypt setup
+cd /opt/dogcatcher/apigw-poc
+./scripts/setup-letsencrypt.sh --domain dogcatcher.jim00.pd.test-rig.nl --email your@email.com
+```
 
 ## Development
 
-### Viewing Logs
+### Local Development
 
 ```bash
-# View all logs
-docker-compose logs -f
+# Start with development settings
+docker compose up -d
 
-# View web application logs only
-docker-compose logs -f web
+# View logs
+docker compose logs -f
 
-# View database logs only
-docker-compose logs -f db
+# Rebuild after code changes
+docker compose up -d --build
+
+# Stop all services
+docker compose down
 ```
 
-### Stopping the Application
+### Running Tests
 
 ```bash
-docker-compose down
+# Load test data
+./scripts/load-test-data.sh
+
+# Test API endpoints
+curl http://localhost:8080/health
+curl -H "X-API-Key: demo-api-key-12345" http://localhost:8080/plain/dogs/
 ```
 
-### Stopping and Removing Data
+## Azure Resource Management
 
-To stop the application and remove all data (including uploaded photos and database):
+### Check VM Status
 
 ```bash
-docker-compose down -v
+az vm show --resource-group dogcatcher-rg --name dogcatcher-vm --show-details -o table
 ```
 
-### Rebuilding After Changes
-
-If you make changes to the application code:
+### Manual Cleanup
 
 ```bash
-docker-compose down
-docker-compose up -d --build
+# Delete the entire resource group (VM, networking, automation)
+az group delete --name dogcatcher-rg --yes --no-wait
 ```
 
-## Database
+### Update Running VM
 
-The application uses PostgreSQL 16 with a single table:
+```bash
+# SSH and pull latest code
+ssh azureuser@dogcatcher.jim00.pd.test-rig.nl
+cd /opt/dogcatcher/apigw-poc
+git pull
+docker compose -f docker-compose.yml -f docker-compose.azure.yml up -d --build
+```
 
-**dogs table:**
-- `id`: Primary key (auto-increment)
-- `name`: Dog's name (varchar)
-- `latitude`: GPS latitude (float)
-- `longitude`: GPS longitude (float)
-- `breed`: Dog breed (varchar)
-- `photo_filename`: Uploaded photo filename (varchar, nullable)
-- `comments`: Additional notes (text, nullable)
-- `caught_date`: Timestamp when record was created (datetime)
+## Kubernetes Deployment
+
+For Kubernetes deployment, see:
+- `helm-chart/model-citizen/` - Helm chart for Model Citizen app
+- `docs/KONG-DEPLOYMENT.md` - Kong API Gateway setup
+- `docs/KONG-MTLS-SETUP.md` - mTLS configuration with Kong
 
 ## Security Notes
 
-⚠️ **Important**: This is a sample application. Before deploying to production:
+⚠️ **This is a proof-of-concept application.** For production use:
 
-1. **Change the SECRET_KEY environment variable** to a strong, randomly generated value
-2. **Use strong database passwords** instead of the default credentials
-3. **Disable debug mode** by setting `FLASK_DEBUG=false` or removing the environment variable
-4. **Implement user authentication** to restrict access to the admin functions
-5. **Add SSL/TLS encryption** for HTTPS connections
-6. **Configure proper file upload validation** and scanning for malware
-7. **Set up database backups** and disaster recovery procedures
-8. **Review and implement security best practices** for production deployments
-9. **Use a production WSGI server** like Gunicorn instead of Flask's development server
-10. **Enable CSRF protection** using Flask-WTF or similar libraries
+1. **Change all default secrets** - Generate strong random keys
+2. **Use strong database passwords** - Not the default credentials
+3. **Enable proper authentication** - Configure JWT/OIDC validators
+4. **Use Let's Encrypt certificates** - Not self-signed certs
+5. **Review firewall rules** - Restrict access as needed
+6. **Enable audit logging** - Monitor access patterns
+7. **Regular security updates** - Keep dependencies updated
 
-**Current Security Features:**
-- File type validation for photo uploads (only PNG, JPG, JPEG, GIF allowed)
-- GPS coordinate validation to ensure valid ranges
-- Secure filename handling to prevent directory traversal attacks
-- Database transaction rollback on errors
-- Server-side validation for all input fields
+### Default Credentials (Development Only)
+
+| Item | Value |
+|------|-------|
+| API Key | `demo-api-key-12345` |
+| Database Password | `dogcatcher123` |
+| Database User | `dogcatcher` |
 
 ## Troubleshooting
 
-### Port Already in Use
+### VM Connection Issues
 
-If port 5000 or 5432 is already in use on your system, edit `docker-compose.yml` and change the port mappings:
+```bash
+# Check VM is running
+az vm show -g dogcatcher-rg -n dogcatcher-vm --show-details --query powerState
 
-```yaml
-ports:
-  - "8080:5000"  # Change 5000 to 8080 or any available port
+# Check public IP
+az vm show -g dogcatcher-rg -n dogcatcher-vm --show-details --query publicIps -o tsv
 ```
 
-### Database Connection Issues
+### Container Issues
 
-If the web application can't connect to the database:
+```bash
+# SSH to VM and check containers
+ssh azureuser@dogcatcher.jim00.pd.test-rig.nl
+docker compose -f docker-compose.yml -f docker-compose.azure.yml ps
+docker compose -f docker-compose.yml -f docker-compose.azure.yml logs proxy
+```
 
-1. Check if the database container is healthy:
-   ```bash
-   docker-compose ps
-   ```
+### DNS Not Resolving
 
-2. View database logs:
-   ```bash
-   docker-compose logs db
-   ```
+```bash
+# Check DNS record
+nslookup dogcatcher.jim00.pd.test-rig.nl
 
-3. Restart the services:
-   ```bash
-   docker-compose restart
-   ```
-
-### Photo Upload Issues
-
-If photos aren't uploading:
-
-1. Check the uploads directory exists:
-   ```bash
-   docker-compose exec web ls -la /app/static/uploads
-   ```
-
-2. Check available disk space
-3. Ensure the photo is under 16MB
-
-## Technology Stack
-
-- **Backend**: Flask 3.0 (Python web framework)
-- **Database**: PostgreSQL 16
-- **ORM**: SQLAlchemy
-- **Containerization**: Docker & Docker Compose
-- **Frontend**: HTML, CSS (embedded in templates)
+# Verify Azure DNS record
+az network dns record-set a show -g <dns-rg> -z jim00.pd.test-rig.nl -n dogcatcher
+```
 
 ## License
 
-This is a sample application for demonstration purposes.
+This is a sample/POC application for demonstration purposes.
 
 ## Support
 
