@@ -6,7 +6,8 @@
 <div style="max-width: 800px; margin: 0 auto;">
     <h2 style="color: #667eea; margin-bottom: 30px;">Add New Dog Entry</h2>
     
-    <form action="{{ url_for('add_dog') }}" method="POST" enctype="multipart/form-data">
+    <form action="{% url 'add_dog' %}" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
         <div class="form-group">
             <label for="name">Dog Name *</label>
             <input type="text" id="name" name="name" required placeholder="Enter dog's name">
@@ -50,7 +51,7 @@
     </form>
     
     <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-        <h3 style="color: #333; margin-bottom: 10px;">📍 GPS Coordinates Guide</h3>
+        <h3 style="color: #333; margin-bottom: 10px;">GPS Coordinates Guide</h3>
         <p style="color: #666; line-height: 1.6;">
             You can find GPS coordinates using:
             <ul style="margin-top: 10px; margin-left: 20px; color: #666;">

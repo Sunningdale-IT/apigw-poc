@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Dashboard{% endblock %}
 
@@ -16,10 +17,8 @@
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
-                         style="width: 60px; height: 60px; font-size: 1.5rem;">
-                        <i class="bi bi-person"></i>
-                    </div>
+                    <img src="{% static 'images/model-family.png' %}" alt="Family" 
+                         style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid #1a5276; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
                 </div>
                 <div class="col">
                     <h5 class="mb-1">{{ citizen.name }}</h5>
@@ -43,7 +42,7 @@
     <div class="row g-4">
         <!-- Passport -->
         <div class="col-md-6 col-lg-4">
-            <a href="{{ url_for('passport') }}" class="text-decoration-none">
+            <a href="{% url 'passport' %}" class="text-decoration-none">
                 <div class="card service-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
@@ -65,7 +64,7 @@
         
         <!-- Driving License -->
         <div class="col-md-6 col-lg-4">
-            <a href="{{ url_for('driving_license') }}" class="text-decoration-none">
+            <a href="{% url 'driving_license' %}" class="text-decoration-none">
                 <div class="card service-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
@@ -87,7 +86,7 @@
         
         <!-- Building Permit -->
         <div class="col-md-6 col-lg-4">
-            <a href="{{ url_for('building_permit') }}" class="text-decoration-none">
+            <a href="{% url 'building_permit' %}" class="text-decoration-none">
                 <div class="card service-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
@@ -109,7 +108,7 @@
         
         <!-- Trash Collection -->
         <div class="col-md-6 col-lg-4">
-            <a href="{{ url_for('trash_collection') }}" class="text-decoration-none">
+            <a href="{% url 'trash_collection' %}" class="text-decoration-none">
                 <div class="card service-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">
@@ -131,7 +130,7 @@
         
         <!-- Found Dogs -->
         <div class="col-md-6 col-lg-4">
-            <a href="{{ url_for('found_dogs') }}" class="text-decoration-none">
+            <a href="{% url 'found_dogs' %}" class="text-decoration-none">
                 <div class="card service-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-start">

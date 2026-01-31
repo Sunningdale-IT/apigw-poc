@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Browse Dogs - City Dog Catcher{% endblock %}
 
@@ -87,11 +88,11 @@
             {% for dog in dogs %}
             <div class="dog-card">
                 {% if dog.photo_filename %}
-                    <img src="{{ url_for('static', filename='uploads/' + dog.photo_filename) }}" 
+                    <img src="{{ dog.photo_url }}" 
                          alt="{{ dog.name }}" class="dog-photo">
                 {% else %}
                     <div class="dog-photo" style="background: #ddd; display: flex; align-items: center; justify-content: center; color: #999; font-size: 3em;">
-                        🐕
+                        Dog
                     </div>
                 {% endif %}
                 
@@ -105,12 +106,12 @@
                     <strong>Found at:</strong><br>
                     <a href="https://www.google.com/maps?q={{ dog.latitude }},{{ dog.longitude }}" 
                        target="_blank" class="location-link">
-                        📍 {{ "%.6f"|format(dog.latitude) }}, {{ "%.6f"|format(dog.longitude) }}
+                        Location: {{ dog.latitude|floatformat:6 }}, {{ dog.longitude|floatformat:6 }}
                     </a>
                 </div>
                 
                 <div class="dog-info">
-                    <strong>Caught on:</strong> {{ dog.caught_date.strftime('%Y-%m-%d %H:%M') }}
+                    <strong>Caught on:</strong> {{ dog.caught_date|date:"Y-m-d H:i" }}
                 </div>
                 
                 {% if dog.comments %}
@@ -120,9 +121,10 @@
                 </div>
                 {% endif %}
                 
-                <form action="{{ url_for('delete_dog', dog_id=dog.id) }}" method="POST" 
+                <form action="{% url 'delete_dog' dog.id %}" method="POST" 
                       class="delete-form" 
                       onsubmit="return confirm('Are you sure you want to delete this dog?');">
+                    {% csrf_token %}
                     <button type="submit" class="btn btn-danger" style="width: 100%;">Delete Entry</button>
                 </form>
             </div>
@@ -131,7 +133,7 @@
     {% else %}
         <div class="no-dogs">
             <h3>No dogs in the database yet</h3>
-            <p>Start by <a href="{{ url_for('admin') }}" style="color: #667eea;">adding a dog</a> to the system.</p>
+            <p>Start by <a href="{% url 'admin' %}" style="color: #667eea;">adding a dog</a> to the system.</p>
         </div>
     {% endif %}
 </div>

@@ -296,37 +296,51 @@ cleanup_existing_dogs() {
     log_success "Removed ${count} existing dog(s)"
 }
 
-# Download a dog photo from Dog CEO API
+# Download a dog photo from Dog CEO API with retries
 download_dog_photo() {
     local breed_index=$1
     local photo_path=$2
+    local max_retries=3
+    local retry=0
     
-    local breed="${DOG_CEO_BREEDS[${breed_index}]}"
-    
-    # Get a random image URL from Dog CEO API
-    local image_url
-    image_url=$(curl -s "https://dog.ceo/api/breed/${breed}/images/random" 2>/dev/null | jq -r '.message' 2>/dev/null || echo "")
-    
-    if [[ -z "${image_url}" ]] || [[ "${image_url}" == "null" ]]; then
-        # Fallback to random dog if breed not found
-        image_url=$(curl -s "https://dog.ceo/api/breeds/image/random" 2>/dev/null | jq -r '.message' 2>/dev/null || echo "")
-    fi
-    
-    if [[ -n "${image_url}" ]] && [[ "${image_url}" != "null" ]]; then
-        if curl -s -o "${photo_path}" "${image_url}" 2>/dev/null; then
-            # Verify it's a valid image file
-            local file_type
-            file_type=$(file -b "${photo_path}" 2>/dev/null || echo "")
-            if [[ "${file_type}" == *"image"* ]] || [[ "${file_type}" == *"JPEG"* ]] || [[ "${file_type}" == *"PNG"* ]]; then
-                return 0
+    while [[ ${retry} -lt ${max_retries} ]]; do
+        local breed="${DOG_CEO_BREEDS[${breed_index}]}"
+        local image_url=""
+        
+        # Try specific breed first, then fallback to random
+        if [[ ${retry} -eq 0 ]]; then
+            image_url=$(curl -s --connect-timeout 5 "https://dog.ceo/api/breed/${breed}/images/random" 2>/dev/null | jq -r '.message' 2>/dev/null || echo "")
+        fi
+        
+        # Fallback to random dog
+        if [[ -z "${image_url}" ]] || [[ "${image_url}" == "null" ]]; then
+            image_url=$(curl -s --connect-timeout 5 "https://dog.ceo/api/breeds/image/random" 2>/dev/null | jq -r '.message' 2>/dev/null || echo "")
+        fi
+        
+        if [[ -n "${image_url}" ]] && [[ "${image_url}" != "null" ]]; then
+            # Download with timeout
+            if curl -s --connect-timeout 10 --max-time 30 -o "${photo_path}" "${image_url}" 2>/dev/null; then
+                # Verify it's a valid image file and has content
+                if [[ -f "${photo_path}" ]] && [[ -s "${photo_path}" ]]; then
+                    local file_type
+                    file_type=$(file -b "${photo_path}" 2>/dev/null || echo "")
+                    if [[ "${file_type}" == *"image"* ]] || [[ "${file_type}" == *"JPEG"* ]] || [[ "${file_type}" == *"PNG"* ]] || [[ "${file_type}" == *"GIF"* ]]; then
+                        return 0
+                    fi
+                fi
             fi
         fi
-    fi
+        
+        ((retry++))
+        if [[ ${retry} -lt ${max_retries} ]]; then
+            sleep 1
+        fi
+    done
     
     return 1
 }
 
-# Create a single dog entry
+# Create a single dog entry (photo required)
 create_dog() {
     local index=$1
     
@@ -357,46 +371,52 @@ create_dog() {
     
     log_dog "Creating: ${name} (${breed})"
     
-    # Download photo
+    # Download photo (required)
     local photo_path="${TEMP_DIR}/${name}_${index}.jpg"
-    local has_photo=false
     
-    if download_dog_photo "${index}" "${photo_path}"; then
-        has_photo=true
-        log_info "  Downloaded photo for ${name}"
-    else
-        log_warn "  Could not download photo for ${name}, creating entry without photo"
+    if ! download_dog_photo "${index}" "${photo_path}"; then
+        log_error "  Failed to download photo for ${name} after retries - skipping"
+        return 1
     fi
     
-    # Create the dog entry via API
-    local curl_opts=("-s" "-X" "POST")
+    log_info "  Downloaded photo for ${name}"
+    
+    # Get initial dog count to verify creation
+    local curl_opts=("-s")
     if [[ -n "${API_KEY}" ]]; then
         curl_opts+=("-H" "X-API-Key: ${API_KEY}")
     fi
     
-    local response
+    local before_count
+    before_count=$(curl "${curl_opts[@]}" "${BASE_URL}/api/dogs/" 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
     
-    if [[ "${has_photo}" == true ]]; then
-        # Use multipart form for photo upload via admin interface
-        response=$(curl -s -X POST \
-            -F "name=${name}" \
-            -F "breed=${breed}" \
-            -F "latitude=${latitude}" \
-            -F "longitude=${longitude}" \
-            -F "comments=${full_comment}" \
-            -F "photo=@${photo_path}" \
-            "${BASE_URL}/add_dog" 2>/dev/null || echo "error")
-    else
-        # Use API endpoint without photo
-        response=$(curl "${curl_opts[@]}" \
-            -H "Content-Type: application/json" \
-            -d "{\"name\":\"${name}\",\"breed\":\"${breed}\",\"latitude\":${latitude},\"longitude\":${longitude},\"comments\":\"${full_comment}\"}" \
-            "${BASE_URL}/api/dogs/" 2>/dev/null || echo "error")
+    # Create the dog entry via the web form (which handles photo upload)
+    # Don't follow redirects (-L not used) so we can check for 302 success
+    local http_code
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        --connect-timeout 10 \
+        --max-time 60 \
+        -F "name=${name}" \
+        -F "breed=${breed}" \
+        -F "latitude=${latitude}" \
+        -F "longitude=${longitude}" \
+        -F "comments=${full_comment}" \
+        -F "photo=@${photo_path}" \
+        "${BASE_URL}/add_dog" 2>/dev/null || echo "000")
+    
+    # Check if the request succeeded (302 redirect means success for form submission)
+    if [[ "${http_code}" != "200" ]] && [[ "${http_code}" != "302" ]] && [[ "${http_code}" != "303" ]]; then
+        log_error "  Failed to create ${name} - HTTP ${http_code}"
+        return 1
     fi
     
-    # Check for success
-    if [[ "${response}" == *"error"* ]] || [[ "${response}" == *"Error"* ]]; then
-        log_warn "  Failed to create ${name}: ${response}"
+    # Verify the dog was actually created by checking count increased
+    sleep 0.3
+    local after_count
+    after_count=$(curl "${curl_opts[@]}" "${BASE_URL}/api/dogs/" 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
+    
+    if [[ "${after_count}" -le "${before_count}" ]]; then
+        log_error "  Failed to verify creation of ${name} (count unchanged)"
         return 1
     fi
     
@@ -436,18 +456,26 @@ main() {
     
     # Create dogs
     echo ""
-    log_info "Creating ${DOG_COUNT} dog entries..."
+    log_info "Creating ${DOG_COUNT} dog entries (photos required)..."
     echo ""
     
     local created=0
     local failed=0
+    local attempts=0
+    local max_data_index=20  # We have 20 entries in our data arrays
+    local current_index=0
     
-    for ((i=0; i<DOG_COUNT; i++)); do
-        if create_dog "${i}"; then
+    # Keep trying until we create enough dogs or run out of data
+    while [[ ${created} -lt ${DOG_COUNT} ]] && [[ ${current_index} -lt ${max_data_index} ]]; do
+        ((attempts++))
+        
+        if create_dog "${current_index}"; then
             ((created++))
         else
             ((failed++))
         fi
+        
+        ((current_index++))
         
         # Small delay to be nice to the Dog CEO API
         sleep 0.5
@@ -455,11 +483,18 @@ main() {
     
     echo ""
     echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
-    log_success "Test data loading complete!"
+    
+    if [[ ${created} -ge ${DOG_COUNT} ]]; then
+        log_success "Test data loading complete!"
+    else
+        log_warn "Could only create ${created} of ${DOG_COUNT} requested dogs"
+    fi
+    
     echo ""
-    echo "  Created: ${created} dogs"
+    echo "  Requested: ${DOG_COUNT} dogs"
+    echo "  Created:   ${created} dogs"
     if [[ ${failed} -gt 0 ]]; then
-        echo "  Failed:  ${failed} dogs"
+        echo "  Failed:    ${failed} dogs"
     fi
     echo ""
     echo "  View dogs at: ${BASE_URL}/browse"

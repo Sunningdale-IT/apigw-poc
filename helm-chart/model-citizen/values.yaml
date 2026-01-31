@@ -14,10 +14,12 @@ fullnameOverride: ""
 
 # Application configuration
 config:
-  # Secret key for Flask sessions (generate a secure random string for production)
+  # Secret key for Django sessions (generate a secure random string for production)
   secretKey: "change-this-in-production"
-  # Enable Flask debug mode (set to false in production)
-  flaskDebug: "false"
+  # Enable Django debug mode (set to false in production)
+  djangoDebug: "false"
+  # Comma-separated list of allowed hosts
+  allowedHosts: "*"
   # API Gateway URL - Kong proxy that routes to Dogcatcher API
   # Format: http://<kong-proxy-service>.<namespace>.svc.cluster.local/<route-path>
   apiGatewayUrl: "http://kong-kong-proxy.kong.svc.cluster.local/dogcatcher/api"

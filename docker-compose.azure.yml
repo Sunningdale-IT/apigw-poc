@@ -43,6 +43,6 @@ services:
     volumes: []
     environment:
       SECRET_KEY: ${CITIZEN_SECRET_KEY:-citizen-secret-change-in-production}
-      FLASK_DEBUG: "false"
+      DJANGO_DEBUG: "false"
       API_GATEWAY_URL: http://proxy/plain
       DOGCATCHER_PUBLIC_URL: ${DOGCATCHER_PUBLIC_URL:-https://dogcatcher.jim00.pd.test-rig.nl}

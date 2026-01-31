@@ -43,8 +43,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "model-citizen.fullname" . }}-secret
                   key: secret-key
-            - name: FLASK_DEBUG
-              value: {{ .Values.config.flaskDebug | quote }}
+            - name: DJANGO_DEBUG
+              value: {{ .Values.config.djangoDebug | quote }}
+            - name: ALLOWED_HOSTS
+              value: {{ .Values.config.allowedHosts | quote }}
             - name: API_GATEWAY_URL
               value: {{ .Values.config.apiGatewayUrl | quote }}
             - name: DOGCATCHER_PUBLIC_URL
