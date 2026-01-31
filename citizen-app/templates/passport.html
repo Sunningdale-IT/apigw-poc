@@ -7,7 +7,7 @@
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-white-50">Dashboard</a></li>
                 <li class="breadcrumb-item active text-white">Passport</li>
             </ol>
         </nav>
@@ -69,6 +69,7 @@
                     <p class="text-muted">Submit a passport renewal request. Processing time is 4-6 weeks.</p>
                     
                     <form method="POST">
+                            {% csrf_token %}
                         <div class="mb-3">
                             <label class="form-label">Renewal Type</label>
                             <select class="form-select" name="renewal_type" required>

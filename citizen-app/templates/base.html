@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -136,11 +137,13 @@
     </style>
 </head>
 <body class="d-flex flex-column">
-    {% if session.citizen_id %}
+    {% if request.session.citizen_id %}
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
-                <i class="bi bi-building"></i> Model Citizen
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
+                <img src="{% static 'images/model-family.png' %}" alt="Logo" 
+                     style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); margin-right: 10px;">
+                Model Citizen
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -148,27 +151,27 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a>
+                        <a class="nav-link" href="{% url 'dashboard' %}"><i class="bi bi-house"></i> Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="bi bi-grid"></i> Services
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('passport') }}"><i class="bi bi-passport"></i> Passport</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('driving_license') }}"><i class="bi bi-car-front"></i> Driving License</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('building_permit') }}"><i class="bi bi-house-gear"></i> Building Permit</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('trash_collection') }}"><i class="bi bi-trash3"></i> Trash Collection</a></li>
+                            <li><a class="dropdown-item" href="{% url 'passport' %}"><i class="bi bi-passport"></i> Passport</a></li>
+                            <li><a class="dropdown-item" href="{% url 'driving_license' %}"><i class="bi bi-car-front"></i> Driving License</a></li>
+                            <li><a class="dropdown-item" href="{% url 'building_permit' %}"><i class="bi bi-house-gear"></i> Building Permit</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trash_collection' %}"><i class="bi bi-trash3"></i> Trash Collection</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('found_dogs') }}"><i class="bi bi-heart"></i> Found Dogs</a></li>
+                            <li><a class="dropdown-item" href="{% url 'found_dogs' %}"><i class="bi bi-heart"></i> Found Dogs</a></li>
                         </ul>
                     </li>
                 </ul>
                 <div class="d-flex align-items-center text-white">
                     <span class="citizen-badge me-3">
-                        <i class="bi bi-person-badge"></i> {{ session.citizen_id }}
+                        <i class="bi bi-person-badge"></i> {{ request.session.citizen_id }}
                     </span>
-                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
+                    <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-box-arrow-right"></i> Logout
                     </a>
                 </div>
@@ -178,23 +181,21 @@
     {% endif %}
     
     <main class="flex-grow-1">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="container mt-3">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+        {% if messages %}
+            <div class="container mt-3">
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         
         {% block content %}{% endblock %}
     </main>
     
-    {% if session.citizen_id %}
+    {% if request.session.citizen_id %}
     <footer>
         <div class="container text-center">
             <p class="mb-1"><i class="bi bi-building"></i> Model Citizen Portal</p>

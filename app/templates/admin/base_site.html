@@ -1,0 +1,574 @@
+{% extends "admin/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --primary: #667eea;
+        --primary-dark: #764ba2;
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --accent: #667eea;
+        --accent-hover: #5a6fd6;
+        --bg-light: #f8f9fc;
+        --text-dark: #333;
+        --text-muted: #666;
+        --border-color: #e0e0e0;
+        --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        background: var(--bg-light) !important;
+        color: var(--text-dark) !important;
+    }
+
+    /* Header styling */
+    #header {
+        background: var(--primary-gradient) !important;
+        padding: 15px 20px !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+
+    #branding h1 {
+        color: white !important;
+        font-weight: 600 !important;
+        font-size: 1.4rem !important;
+    }
+
+    #branding h1 a:link,
+    #branding h1 a:visited {
+        color: white !important;
+    }
+
+    #user-tools {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.9rem !important;
+    }
+
+    #user-tools a {
+        color: white !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+        text-decoration: none !important;
+    }
+
+    #user-tools a:hover {
+        border-bottom-color: white !important;
+    }
+
+    /* Hide the theme toggle and skip link */
+    [data-theme-toggle],
+    .theme-toggle,
+    button[title*="Toggle theme"],
+    a[href="#content-start"],
+    .skip-to-content-link {
+        display: none !important;
+    }
+
+    /* Log out button styling */
+    #user-tools button {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+        padding: 6px 14px !important;
+        border-radius: 6px !important;
+        cursor: pointer !important;
+        font-size: 0.85rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    #user-tools button:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    /* Breadcrumbs */
+    div.breadcrumbs {
+        background: white !important;
+        padding: 12px 20px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        font-size: 0.9rem !important;
+    }
+
+    div.breadcrumbs a {
+        color: var(--primary) !important;
+    }
+
+    /* Main content area */
+    #content {
+        padding: 25px !important;
+    }
+
+    #content h1 {
+        color: var(--text-dark) !important;
+        font-size: 1.8rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 25px !important;
+    }
+
+    /* Module boxes (app sections) */
+    .module {
+        background: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow) !important;
+        margin-bottom: 20px !important;
+        overflow: hidden !important;
+    }
+
+    .module caption,
+    .module h2,
+    .module table caption {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+        padding: 15px 20px !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        text-align: left !important;
+        margin: 0 !important;
+    }
+
+    .module caption a,
+    .module h2 a,
+    .module table caption a {
+        color: white !important;
+    }
+
+    .module table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .module table th,
+    .module table td {
+        padding: 12px 20px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        text-align: left !important;
+    }
+
+    .module table tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    .module table tr:hover {
+        background: #f8f9fc !important;
+    }
+
+    .module table th a,
+    .module table td a {
+        color: var(--primary) !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+    }
+
+    .module table th a:hover,
+    .module table td a:hover {
+        color: var(--primary-dark) !important;
+        text-decoration: underline !important;
+    }
+
+    /* Add/Change links in table */
+    .module table td.addlink a,
+    .module table td.changelink a {
+        font-size: 0.85rem !important;
+        color: var(--text-muted) !important;
+        background: #f0f0f0 !important;
+        padding: 4px 10px !important;
+        border-radius: 4px !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .module table td.addlink a:hover,
+    .module table td.changelink a:hover {
+        background: var(--primary) !important;
+        color: white !important;
+        text-decoration: none !important;
+    }
+
+    /* Recent actions sidebar */
+    #content-related {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow) !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #content-related h2 {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+        padding: 15px 20px !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+
+    #content-related h3 {
+        padding: 15px 20px 10px !important;
+        color: var(--text-muted) !important;
+        font-size: 0.9rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    #content-related .module {
+        box-shadow: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    #content-related ul {
+        padding: 0 20px 20px !important;
+        margin: 0 !important;
+        list-style: none !important;
+    }
+
+    #content-related ul li {
+        padding: 8px 0 !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    #content-related ul li:last-child {
+        border-bottom: none !important;
+    }
+
+    #content-related p {
+        padding: 15px 20px !important;
+        color: var(--text-muted) !important;
+    }
+
+    /* Buttons */
+    .button,
+    input[type="submit"],
+    input[type="button"],
+    .submit-row input {
+        background: var(--primary-gradient) !important;
+        border: none !important;
+        color: white !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .button:hover,
+    input[type="submit"]:hover,
+    input[type="button"]:hover,
+    .submit-row input:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+
+    .button.default,
+    input[type="submit"].default {
+        background: var(--primary-gradient) !important;
+    }
+
+    /* Secondary buttons */
+    .button:not(.default),
+    a.button {
+        background: #f0f0f0 !important;
+        color: var(--text-dark) !important;
+    }
+
+    .button:not(.default):hover,
+    a.button:hover {
+        background: #e0e0e0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    /* Delete button */
+    .deletelink,
+    .button.deletelink {
+        background: #dc3545 !important;
+        color: white !important;
+    }
+
+    .deletelink:hover,
+    .button.deletelink:hover {
+        background: #c82333 !important;
+    }
+
+    /* Form styling */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="url"],
+    textarea,
+    select {
+        width: 100% !important;
+        max-width: 500px !important;
+        padding: 10px 14px !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+        transition: all 0.3s ease !important;
+        background: #fafafa !important;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="email"]:focus,
+    input[type="number"]:focus,
+    input[type="url"]:focus,
+    textarea:focus,
+    select:focus {
+        outline: none !important;
+        border-color: var(--primary) !important;
+        background: white !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15) !important;
+    }
+
+    /* Fieldsets */
+    fieldset {
+        background: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow) !important;
+        margin-bottom: 20px !important;
+        padding: 0 !important;
+    }
+
+    fieldset h2 {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+        padding: 15px 20px !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+        border-radius: 12px 12px 0 0 !important;
+    }
+
+    fieldset .form-row {
+        padding: 15px 20px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    fieldset .form-row:last-child {
+        border-bottom: none !important;
+    }
+
+    /* Change list (object list) styling */
+    #changelist {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow) !important;
+        overflow: hidden !important;
+    }
+
+    #changelist-filter {
+        background: white !important;
+        border-radius: 12px !important;
+        box-shadow: var(--shadow) !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #changelist-filter h2 {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+        padding: 15px 20px !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+
+    #changelist-filter h3 {
+        padding: 12px 20px 8px !important;
+        font-size: 0.85rem !important;
+        color: var(--text-muted) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    #changelist-filter ul {
+        padding: 0 20px 15px !important;
+        margin: 0 !important;
+        list-style: none !important;
+    }
+
+    #changelist-filter li {
+        padding: 4px 0 !important;
+    }
+
+    #changelist-filter a {
+        color: var(--text-dark) !important;
+        text-decoration: none !important;
+    }
+
+    #changelist-filter li.selected a {
+        color: var(--primary) !important;
+        font-weight: 600 !important;
+    }
+
+    /* Result list table */
+    #result_list {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    #result_list thead th {
+        background: #f8f9fc !important;
+        padding: 12px 15px !important;
+        font-weight: 600 !important;
+        color: var(--text-dark) !important;
+        border-bottom: 2px solid var(--border-color) !important;
+        text-align: left !important;
+    }
+
+    #result_list tbody td {
+        padding: 12px 15px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    #result_list tbody tr:hover {
+        background: #f8f9fc !important;
+    }
+
+    #result_list tbody tr.selected {
+        background: rgba(102, 126, 234, 0.1) !important;
+    }
+
+    /* Pagination */
+    .paginator {
+        padding: 15px 20px !important;
+        background: #f8f9fc !important;
+        border-top: 1px solid var(--border-color) !important;
+    }
+
+    .paginator a:link,
+    .paginator a:visited {
+        color: var(--primary) !important;
+        padding: 6px 12px !important;
+        border-radius: 6px !important;
+        background: white !important;
+        border: 1px solid var(--border-color) !important;
+        margin: 0 2px !important;
+    }
+
+    .paginator a:hover {
+        background: var(--primary) !important;
+        color: white !important;
+        border-color: var(--primary) !important;
+    }
+
+    /* Messages */
+    ul.messagelist {
+        padding: 0 !important;
+        margin: 0 0 20px 0 !important;
+    }
+
+    ul.messagelist li {
+        padding: 15px 20px !important;
+        border-radius: 8px !important;
+        margin-bottom: 10px !important;
+        font-weight: 500 !important;
+    }
+
+    ul.messagelist li.success {
+        background: #d4edda !important;
+        color: #155724 !important;
+        border: 1px solid #c3e6cb !important;
+    }
+
+    ul.messagelist li.error {
+        background: #f8d7da !important;
+        color: #721c24 !important;
+        border: 1px solid #f5c6cb !important;
+    }
+
+    ul.messagelist li.warning {
+        background: #fff3cd !important;
+        color: #856404 !important;
+        border: 1px solid #ffeeba !important;
+    }
+
+    ul.messagelist li.info {
+        background: #d1ecf1 !important;
+        color: #0c5460 !important;
+        border: 1px solid #bee5eb !important;
+    }
+
+    /* Object tools (Add button etc) */
+    .object-tools {
+        margin: 0 0 20px 0 !important;
+    }
+
+    .object-tools a {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+        padding: 8px 16px !important;
+        border-radius: 8px !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .object-tools a:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+
+    /* Calendar and time widgets */
+    .calendarbox,
+    .clockbox {
+        border-radius: 12px !important;
+        box-shadow: var(--shadow-lg) !important;
+        overflow: hidden !important;
+    }
+
+    .calendar caption {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+    }
+
+    /* Footer */
+    #footer {
+        background: transparent !important;
+        color: var(--text-muted) !important;
+        padding: 20px !important;
+        text-align: center !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Hide nav sidebar toggle */
+    #toggle-nav-sidebar {
+        display: none !important;
+    }
+
+    /* Nav sidebar styling */
+    #nav-sidebar {
+        background: white !important;
+        border-right: 1px solid var(--border-color) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        #header {
+            padding: 12px 15px !important;
+        }
+
+        #content {
+            padding: 15px !important;
+        }
+
+        .module table th,
+        .module table td {
+            padding: 10px 15px !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">🐕 Dogcatcher Admin</a>
+</h1>
+{% endblock %}
+
+{% block title %}{{ title }} | Dogcatcher Admin{% endblock %}

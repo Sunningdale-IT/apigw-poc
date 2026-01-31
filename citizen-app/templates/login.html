@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Login{% endblock %}
 
@@ -8,10 +9,9 @@
         <div class="row justify-content-center">
             <div class="col-md-5">
                 <div class="text-center mb-4">
-                    <img src="{{ url_for('static', filename='images/family.png') }}" 
-                         alt="Family" 
-                         class="img-fluid mb-3" 
-                         style="max-height: 150px;">
+                    <img src="{% static 'images/model-family.png' %}" alt="Model Citizen Family" 
+                         style="width: 150px; height: 150px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.2);"
+                         class="mb-3">
                     <h2 class="text-white">Model Citizen</h2>
                     <p class="text-white-50">Local Government Services Portal</p>
                 </div>
@@ -23,6 +23,7 @@
                         </h4>
                         
                         <form method="POST">
+                            {% csrf_token %}
                             <div class="mb-4">
                                 <label for="citizen_id" class="form-label">Citizen ID</label>
                                 <div class="input-group">

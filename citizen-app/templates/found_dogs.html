@@ -7,7 +7,7 @@
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-white-50">Dashboard</a></li>
                 <li class="breadcrumb-item active text-white">Found Dogs</li>
             </ol>
         </nav>
@@ -37,15 +37,15 @@
     
     {% if dogs %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 class="mb-0"><i class="bi bi-list"></i> {{ dogs|length }} Dog{{ 's' if dogs|length != 1 else '' }} Currently at the Pound</h5>
+        <h5 class="mb-0"><i class="bi bi-list"></i> {{ dogs|length }} Dog{% if dogs|length != 1 %}s{% endif %} Currently at the Pound</h5>
     </div>
     
     <div class="row g-4">
         {% for dog in dogs %}
         <div class="col-md-6 col-lg-4">
             <div class="card dog-card h-100">
-                {% if dog.photo_filename %}
-                <img src="{{ dogcatcher_url }}{{ dog.photo_url }}" class="card-img-top dog-photo" 
+                {% if dog.photo_download_url %}
+                <img src="{{ dogcatcher_url }}{{ dog.photo_download_url }}" class="card-img-top dog-photo" 
                      alt="Photo of {{ dog.name }}" onerror="this.src='https://via.placeholder.com/400x200?text=No+Photo'">
                 {% else %}
                 <div class="card-img-top dog-photo bg-light d-flex align-items-center justify-content-center">
@@ -64,7 +64,7 @@
                     </p>
                     
                     <ul class="list-unstyled small text-muted">
-                        <li><i class="bi bi-calendar3"></i> Found: {{ dog.caught_date[:10] if dog.caught_date else 'Unknown' }}</li>
+                        <li><i class="bi bi-calendar3"></i> Found: {% if dog.caught_date %}{{ dog.caught_date|slice:":10" }}{% else %}Unknown{% endif %}</li>
                         <li><i class="bi bi-geo-alt"></i> Location: {{ dog.latitude }}, {{ dog.longitude }}</li>
                     </ul>
                     
@@ -74,7 +74,7 @@
                 </div>
                 
                 <div class="card-footer bg-transparent">
-                    <a href="{{ url_for('found_dog_detail', dog_id=dog.id) }}" class="btn btn-outline-primary btn-sm w-100">
+                    <a href="{% url 'found_dog_detail' dog.id %}" class="btn btn-outline-primary btn-sm w-100">
                         <i class="bi bi-eye"></i> View Details
                     </a>
                 </div>

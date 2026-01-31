@@ -7,9 +7,9 @@
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('found_dogs') }}" class="text-white-50">Found Dogs</a></li>
-                <li class="breadcrumb-item active text-white">{{ dog.name if dog else 'Details' }}</li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'found_dogs' %}" class="text-white-50">Found Dogs</a></li>
+                <li class="breadcrumb-item active text-white">{% if dog %}{{ dog.name }}{% else %}Details{% endif %}</li>
             </ol>
         </nav>
         <h1><i class="bi bi-heart"></i> Dog Details</h1>
@@ -21,15 +21,15 @@
     <div class="alert alert-danger">
         <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
     </div>
-    <a href="{{ url_for('found_dogs') }}" class="btn btn-primary">
+    <a href="{% url 'found_dogs' %}" class="btn btn-primary">
         <i class="bi bi-arrow-left"></i> Back to Found Dogs
     </a>
     {% elif dog %}
     <div class="row">
         <div class="col-lg-6 mb-4">
-            {% if dog.photo_filename %}
+            {% if dog.photo_download_url %}
             <div class="card">
-                <img src="{{ dogcatcher_url }}{{ dog.photo_url }}" class="card-img-top" 
+                <img src="{{ dogcatcher_url }}{{ dog.photo_download_url }}" class="card-img-top" 
                      alt="Photo of {{ dog.name }}" style="max-height: 500px; object-fit: cover;"
                      onerror="this.src='https://via.placeholder.com/600x400?text=No+Photo'">
                 <div class="card-footer">
@@ -64,7 +64,7 @@
                         </tr>
                         <tr>
                             <td class="text-muted">Date Found</td>
-                            <td>{{ dog.caught_date[:10] if dog.caught_date else 'Unknown' }}</td>
+                            <td>{% if dog.caught_date %}{{ dog.caught_date|slice:":10" }}{% else %}Unknown{% endif %}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Location Found</td>
@@ -98,7 +98,7 @@
                         <a href="tel:555-364-4357" class="btn btn-success btn-lg">
                             <i class="bi bi-telephone"></i> Call to Claim: 555-DOG-HELP
                         </a>
-                        <a href="{{ url_for('found_dogs') }}" class="btn btn-outline-secondary">
+                        <a href="{% url 'found_dogs' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Back to All Dogs
                         </a>
                     </div>

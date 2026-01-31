@@ -7,7 +7,7 @@
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-white-50">Dashboard</a></li>
                 <li class="breadcrumb-item active text-white">Driving License</li>
             </ol>
         </nav>
@@ -31,7 +31,7 @@
                             <h4 class="mb-0">{{ citizen.name }}</h4>
                             <p class="mb-2 opacity-75">{{ license.number }}</p>
                             <div class="d-flex justify-content-between">
-                                <span>Class: {{ license.class }}</span>
+                                <span>Class: {{ license.license_class }}</span>
                                 <span class="status-badge status-{{ license.status|lower }}">{{ license.status }}</span>
                             </div>
                         </div>
@@ -44,7 +44,7 @@
                         </tr>
                         <tr>
                             <td class="text-muted">License Class</td>
-                            <td>{{ license.class }} (Cars, Light Vehicles)</td>
+                            <td>{{ license.license_class }} (Cars, Light Vehicles)</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Issue Date</td>
@@ -73,6 +73,7 @@
                     <p class="text-muted">Renew your driving license online. New license will be mailed within 10 business days.</p>
                     
                     <form method="POST">
+                            {% csrf_token %}
                         <div class="mb-3">
                             <label class="form-label">Renewal Reason</label>
                             <select class="form-select" name="reason" required>

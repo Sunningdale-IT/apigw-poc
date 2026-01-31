@@ -22,16 +22,20 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://dogcatcher:dogcatcher123@db:5432/dogcatcher
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: dogcatcher
+      POSTGRES_USER: dogcatcher
+      POSTGRES_PASSWORD: dogcatcher123
       SECRET_KEY: ${DOGCATCHER_SECRET_KEY:-change-this-in-production}
-      FLASK_DEBUG: ${FLASK_DEBUG:-false}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       API_KEYS: ${DOGCATCHER_API_KEYS:-}
       API_KEY_REQUIRED: ${API_KEY_REQUIRED:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
     # Direct port access (bypasses proxy)
     ports:
       - "5001:5000"
     volumes:
-      - ./app:/app
       - uploads:/app/static/uploads
     depends_on:
       db:
@@ -68,6 +72,73 @@ services:
       timeout: 3s
       retries: 3
 
+  # Kong API Gateway
+  kong-db:
+    image: postgres:16-alpine
+    container_name: kong-db
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kong123
+    volumes:
+      - kong_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kong-migrations:
+    image: kong:3.5
+    container_name: kong-migrations
+    command: kong migrations bootstrap
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong123
+      KONG_PG_DATABASE: kong
+    depends_on:
+      kong-db:
+        condition: service_healthy
+    restart: on-failure
+
+  kong:
+    image: kong:3.5
+    container_name: kong
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong123
+      KONG_PG_DATABASE: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      # Kong Manager OSS settings
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+    ports:
+      - "8000:8000"   # Kong Proxy
+      - "8001:8001"   # Kong Admin API
+      - "8002:8002"   # Kong Manager GUI
+    depends_on:
+      kong-db:
+        condition: service_healthy
+      kong-migrations:
+        condition: service_completed_successfully
+      web:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   citizen:
     build: ./citizen-app
     container_name: model-citizen
@@ -75,20 +146,22 @@ services:
       - .env
     environment:
       SECRET_KEY: ${CITIZEN_SECRET_KEY:-citizen-secret-change-in-production}
-      FLASK_DEBUG: ${FLASK_DEBUG:-false}
-      # Use proxy for API access with different auth modes
-      API_GATEWAY_URL: ${API_GATEWAY_URL:-http://proxy/plain}
-      DOGCATCHER_PUBLIC_URL: ${DOGCATCHER_PUBLIC_URL:-http://localhost:8080}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      # Use Kong for API access
+      API_GATEWAY_URL: ${API_GATEWAY_URL:-http://kong:8000/public}
+      DOGCATCHER_PUBLIC_URL: ${DOGCATCHER_PUBLIC_URL:-http://localhost:8000/public}
+      DOGCATCHER_API_KEY: ${DOGCATCHER_API_KEY:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
     ports:
       - "5002:5000"
-    volumes:
-      - ./citizen-app:/app
     depends_on:
-      - proxy
+      kong:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  kong_data:
   uploads:
   letsencrypt:
   certbot_www:
