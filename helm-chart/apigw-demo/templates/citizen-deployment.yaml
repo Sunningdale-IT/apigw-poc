@@ -1,0 +1,102 @@
+{{- if .Values.citizen.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-citizen
+  labels:
+    {{- include "apigw-demo.citizen.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.citizen.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.citizen.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.citizen.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: citizen
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.citizen.image.repository }}:{{ .Values.citizen.image.tag }}"
+        imagePullPolicy: {{ .Values.citizen.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.citizen.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-citizen-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.citizen.env.djangoDebug | quote }}
+        - name: ALLOWED_HOSTS
+          value: {{ .Values.citizen.env.allowedHosts | quote }}
+        - name: API_GATEWAY_URL
+          value: {{ .Values.citizen.env.apiGatewayUrl | quote }}
+        - name: DOGCATCHER_PUBLIC_URL
+          value: {{ .Values.citizen.env.dogcatcherPublicUrl | quote }}
+        {{- if .Values.citizen.env.dogcatcherApiKey }}
+        - name: DOGCATCHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-citizen-secret
+              key: api-key
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.citizen.resources | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-citizen
+  labels:
+    {{- include "apigw-demo.citizen.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.citizen.service.type }}
+  ports:
+    - port: {{ .Values.citizen.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apigw-demo.citizen.selectorLabels" . | nindent 4 }}
+{{- end }}

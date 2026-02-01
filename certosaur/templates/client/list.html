@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Client Certificates{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">🥚</div>
+        Client Certificates
+    </h1>
+    <p class="page-description">Freshly hatched client certificates for mTLS</p>
+</div>
+
+<div class="flex justify-between items-center mb-3">
+    <div></div>
+    <a href="{% url 'client_cert_create' %}" class="btn btn-accent">
+        ➕ Hatch New Client Certificate
+    </a>
+</div>
+
+{% if certs %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Common Name</th>
+                    <th>Email</th>
+                    <th>Issuing CA</th>
+                    <th>Valid Until</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cert in certs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'client_cert_detail' cert.pk %}" style="font-weight: 700;">
+                                {{ cert.name }}
+                            </a>
+                        </td>
+                        <td>{{ cert.common_name }}</td>
+                        <td>{{ cert.email|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'ca_detail' cert.issuing_ca.pk %}">{{ cert.issuing_ca.name }}</a>
+                        </td>
+                        <td>
+                            {% if cert.valid_until %}
+                                {{ cert.valid_until|date:"M d, Y" }}
+                                {% if cert.days_until_expiry < 30 and cert.status == 'active' %}
+                                    <span class="badge badge-pending" style="margin-left: 0.5rem;">
+                                        {{ cert.days_until_expiry }}d left
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ cert.status }}">{{ cert.status }}</span>
+                        </td>
+                        <td>
+                            <div class="flex gap-1">
+                                <a href="{% url 'client_cert_detail' cert.pk %}" class="btn btn-outline btn-sm">View</a>
+                                {% if cert.status == 'active' and cert.p12_bundle %}
+                                    <a href="{% url 'client_cert_download' cert.pk 'p12' %}" class="btn btn-accent btn-sm">📦</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">🥚</div>
+            <h3 class="empty-title">No Client Certificates Yet</h3>
+            <p class="empty-text">Hatch client certificates for mTLS authentication!</p>
+            <a href="{% url 'client_cert_create' %}" class="btn btn-accent btn-lg">
+                🐣 Hatch Your First Client Certificate
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

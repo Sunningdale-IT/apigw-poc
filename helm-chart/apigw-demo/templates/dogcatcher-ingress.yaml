@@ -1,0 +1,31 @@
+{{- if and .Values.dogcatcher.enabled .Values.dogcatcher.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-dogcatcher
+  labels:
+    {{- include "apigw-demo.dogcatcher.labels" . | nindent 4 }}
+  {{- with .Values.dogcatcher.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.dogcatcher.ingress.className }}
+  {{- if .Values.dogcatcher.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.dogcatcher.ingress.host }}
+      secretName: {{ .Values.dogcatcher.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.dogcatcher.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" . }}-dogcatcher
+                port:
+                  number: {{ .Values.dogcatcher.service.port }}
+{{- end }}

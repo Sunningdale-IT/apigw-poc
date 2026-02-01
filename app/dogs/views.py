@@ -2,9 +2,10 @@
 API views for the Dogcatcher application.
 """
 import os
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, JsonResponse
 from django.utils import timezone
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,6 +14,12 @@ from drf_spectacular.types import OpenApiTypes
 
 from .models import Dog
 from .serializers import DogSerializer, DogInputSerializer, ExportSerializer
+
+
+@csrf_exempt
+def health(request):
+    """Health check endpoint for Kubernetes probes."""
+    return JsonResponse({'status': 'healthy', 'service': 'dogcatcher'})
 
 
 @extend_schema_view(

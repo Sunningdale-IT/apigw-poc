@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Certificate Authorities{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">🦴</div>
+        Certificate Authorities
+    </h1>
+    <p class="page-description">The alpha dinos of your certificate kingdom</p>
+</div>
+
+<div class="flex justify-between items-center mb-3">
+    <div></div>
+    <a href="{% url 'ca_create' %}" class="btn btn-primary">
+        ➕ Hatch New CA
+    </a>
+</div>
+
+{% if cas %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Common Name</th>
+                    <th>Type</th>
+                    <th>Valid Until</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ca in cas %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'ca_detail' ca.pk %}" style="font-weight: 700;">
+                                {{ ca.name }}
+                            </a>
+                        </td>
+                        <td>{{ ca.common_name }}</td>
+                        <td>
+                            <span class="badge {% if ca.is_root %}badge-root{% else %}badge-intermediate{% endif %}">
+                                {% if ca.is_root %}🦖 ROOT{% else %}🦕 INTERMEDIATE{% endif %}
+                            </span>
+                            {% if not ca.is_root and ca.parent_ca %}
+                                <span style="font-size: 0.8rem; color: var(--text-secondary); display: block;">
+                                    ↳ {{ ca.parent_ca.name }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ca.valid_until %}
+                                {{ ca.valid_until|date:"M d, Y" }}
+                                {% if ca.days_until_expiry < 30 %}
+                                    <span class="badge badge-pending" style="margin-left: 0.5rem;">
+                                        {{ ca.days_until_expiry }}d left
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ca.is_valid %}
+                                <span class="badge badge-active">Alive</span>
+                            {% else %}
+                                <span class="badge badge-expired">Extinct</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="flex gap-1">
+                                <a href="{% url 'ca_detail' ca.pk %}" class="btn btn-outline btn-sm">View</a>
+                                <a href="{% url 'ca_download' ca.pk 'cert' %}" class="btn btn-secondary btn-sm">📥 Cert</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">🦴</div>
+            <h3 class="empty-title">No Certificate Authorities Yet</h3>
+            <p class="empty-text">Hatch your first CA to start the certificate kingdom!</p>
+            <a href="{% url 'ca_create' %}" class="btn btn-primary btn-lg">
+                🥚 Hatch Your First CA
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

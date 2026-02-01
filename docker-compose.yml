@@ -89,7 +89,7 @@ services:
       retries: 5
 
   kong-migrations:
-    image: kong:3.5
+    build: ./kong
     container_name: kong-migrations
     command: kong migrations bootstrap
     environment:
@@ -104,7 +104,7 @@ services:
     restart: on-failure
 
   kong:
-    image: kong:3.5
+    build: ./kong
     container_name: kong
     environment:
       KONG_DATABASE: postgres
@@ -121,6 +121,8 @@ services:
       # Kong Manager OSS settings
       KONG_ADMIN_GUI_URL: http://localhost:8002
       KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+      # Enable OIDC plugin (bundled, key-auth, jwt are enabled by default)
+      KONG_PLUGINS: bundled,oidc
     ports:
       - "8000:8000"   # Kong Proxy
       - "8001:8001"   # Kong Admin API
@@ -159,9 +161,51 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Certosaur - Prehistoric Certificate Management Portal 🦖
+  certosaur:
+    build: ./certosaur
+    container_name: certosaur
+    environment:
+      DJANGO_SECRET_KEY: ${CERTOSAUR_SECRET_KEY:-certosaur-secret-change-in-production}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
+      DJANGO_ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,certosaur}
+    ports:
+      - "5003:8000"
+    volumes:
+      - certosaur_data:/app/data
+      - certosaur_certs:/app/certificates_storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/login/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Keycloak Identity Provider (for OIDC authentication)
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8090:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 volumes:
   postgres_data:
   kong_data:
   uploads:
   letsencrypt:
   certbot_www:
+  certosaur_data:
+  certosaur_certs:

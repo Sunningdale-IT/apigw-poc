@@ -1,0 +1,17 @@
+{{- if .Values.dogcatcher.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-dogcatcher
+  labels:
+    {{- include "apigw-demo.dogcatcher.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.dogcatcher.service.type }}
+  ports:
+    - port: {{ .Values.dogcatcher.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apigw-demo.dogcatcher.selectorLabels" . | nindent 4 }}
+{{- end }}

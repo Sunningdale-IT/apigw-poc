@@ -1,0 +1,56 @@
+{{- if .Values.kong.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-migrations
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.kong.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrations
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: wait-for-db
+        image: postgres:16-alpine
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until pg_isready -h {{ include "apigw-demo.fullname" . }}-postgres-0.{{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgres.databases.kong.username }}; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      containers:
+      - name: kong-migrations
+        image: "{{ .Values.kong.image.repository }}:{{ .Values.kong.image.tag }}"
+        imagePullPolicy: {{ .Values.kong.image.pullPolicy }}
+        command: ['kong', 'migrations', 'bootstrap']
+        env:
+        - name: KONG_DATABASE
+          value: {{ .Values.kong.env.database | quote }}
+        - name: KONG_PG_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres-0.{{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: KONG_PG_PORT
+          value: "5432"
+        - name: KONG_PG_DATABASE
+          value: {{ .Values.postgres.databases.kong.name | quote }}
+        - name: KONG_PG_USER
+          value: {{ .Values.postgres.databases.kong.username | quote }}
+        - name: KONG_PG_PASSWORD
+          value: {{ .Values.postgres.databases.kong.password | quote }}
+{{- end }}

@@ -1,0 +1,49 @@
+{{- if .Values.certosaur.enabled }}
+{{- if .Values.certosaur.persistence.data.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-certosaur-data
+  labels:
+    {{- include "apigw-demo.certosaur.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.certosaur.persistence.data.accessMode }}
+  {{- if .Values.certosaur.persistence.data.storageClass }}
+  {{- if (eq "-" .Values.certosaur.persistence.data.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.certosaur.persistence.data.storageClass | quote }}
+  {{- end }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.certosaur.persistence.data.size }}
+---
+{{- end }}
+{{- if .Values.certosaur.persistence.certs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-certosaur-certs
+  labels:
+    {{- include "apigw-demo.certosaur.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.certosaur.persistence.certs.accessMode }}
+  {{- if .Values.certosaur.persistence.certs.storageClass }}
+  {{- if (eq "-" .Values.certosaur.persistence.certs.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.certosaur.persistence.certs.storageClass | quote }}
+  {{- end }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.certosaur.persistence.certs.size }}
+{{- end }}
+{{- end }}

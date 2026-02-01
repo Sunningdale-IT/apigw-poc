@@ -1,0 +1,83 @@
+# Default values - DO NOT USE IN PRODUCTION
+# Copy this file to my-values.yaml and customize for your environment
+
+global:
+  domain: jim00.pd.test-rig.nl
+  storageClass: default
+
+dogcatcher:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/dogcatcher-api
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  ingress:
+    host: dogcatcher.jim00.pd.test-rig.nl
+
+dogcatcherDb:
+  enabled: true
+  env:
+    password: "CHANGE-ME-IN-PRODUCTION"
+
+kong:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/kong-oidc
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  proxy:
+    ingress:
+      host: kong.jim00.pd.test-rig.nl
+
+  admin:
+    ingress:
+      host: kong-admin.jim00.pd.test-rig.nl
+
+  manager:
+    ingress:
+      host: kong-manager.jim00.pd.test-rig.nl
+
+kongDb:
+  enabled: true
+  env:
+    password: "CHANGE-ME-IN-PRODUCTION"
+
+citizen:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/model-citizen
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  ingress:
+    host: citizen.jim00.pd.test-rig.nl
+
+certosaur:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: docker.io/jimleitch/certosaur
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  ingress:
+    host: certosaur.jim00.pd.test-rig.nl
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  
+  ingress:
+    host: keycloak.jim00.pd.test-rig.nl
+  
+  env:
+    adminPassword: "CHANGE-ME-IN-PRODUCTION"
