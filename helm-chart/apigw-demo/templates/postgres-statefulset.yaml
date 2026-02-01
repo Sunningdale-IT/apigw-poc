@@ -1,0 +1,137 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-postgres-init
+  labels:
+    {{- include "apigw-demo.postgres.labels" . | nindent 4 }}
+data:
+  init-databases.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Creating databases and users..."
+    
+    # Create Kong database and user
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.postgres.databases.kong.username }} WITH PASSWORD '{{ .Values.postgres.databases.kong.password }}';
+      CREATE DATABASE {{ .Values.postgres.databases.kong.name }} OWNER {{ .Values.postgres.databases.kong.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.databases.kong.name }} TO {{ .Values.postgres.databases.kong.username }};
+    EOSQL
+    
+    # Create Dogcatcher database and user
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.postgres.databases.dogcatcher.username }} WITH PASSWORD '{{ .Values.postgres.databases.dogcatcher.password }}';
+      CREATE DATABASE {{ .Values.postgres.databases.dogcatcher.name }} OWNER {{ .Values.postgres.databases.dogcatcher.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.databases.dogcatcher.name }} TO {{ .Values.postgres.databases.dogcatcher.username }};
+    EOSQL
+    
+    {{- if .Values.keycloak.enabled }}
+    # Create Keycloak database and user
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.postgres.databases.keycloak.username }} WITH PASSWORD '{{ .Values.postgres.databases.keycloak.password }}';
+      CREATE DATABASE {{ .Values.postgres.databases.keycloak.name }} OWNER {{ .Values.postgres.databases.keycloak.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.databases.keycloak.name }} TO {{ .Values.postgres.databases.keycloak.username }};
+    EOSQL
+    {{- end }}
+    
+    echo "All databases and users created successfully!"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-postgres
+  labels:
+    {{- include "apigw-demo.postgres.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postgres.service.type }}
+  ports:
+    - port: {{ .Values.postgres.service.port }}
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  clusterIP: None
+  selector:
+    {{- include "apigw-demo.postgres.selectorLabels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-postgres
+  labels:
+    {{- include "apigw-demo.postgres.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "apigw-demo.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.postgres.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: postgres
+        image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+        imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.env.database | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.env.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-postgres-secret
+              key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.postgres.env.username }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.postgres.env.username }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.postgres.resources | nindent 10 }}
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: {{ include "apigw-demo.fullname" . }}-postgres-init
+  {{- if .Values.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ {{ .Values.postgres.persistence.accessMode | quote }} ]
+      {{- if .Values.postgres.persistence.storageClass }}
+      storageClassName: {{ .Values.postgres.persistence.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.postgres.persistence.size | quote }}
+  {{- end }}
+{{- end }}

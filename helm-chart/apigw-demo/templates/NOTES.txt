@@ -1,0 +1,121 @@
+🎉 API Gateway POC Demo Suite has been deployed! 🎉
+
+Your release is named {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+📋 DEPLOYMENT STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To check the status of your deployment:
+
+  kubectl get pods -n {{ .Release.Namespace }}
+
+To view all resources:
+
+  kubectl get all,ingress,pvc -n {{ .Release.Namespace }}
+
+🌐 URLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{- if .Values.dogcatcher.ingress.enabled }}
+  Dogcatcher Admin:   https://{{ .Values.dogcatcher.ingress.host }}/admin/
+  Dogcatcher API:     https://{{ .Values.dogcatcher.ingress.host }}/api/dogs/
+{{- end }}
+
+{{- if and .Values.kong.proxy.enabled .Values.kong.proxy.ingress.enabled }}
+  Kong Proxy:         https://{{ .Values.kong.proxy.ingress.host }}/
+{{- end }}
+
+{{- if and .Values.kong.admin.enabled .Values.kong.admin.ingress.enabled }}
+  Kong Admin API:     https://{{ .Values.kong.admin.ingress.host }}/
+{{- end }}
+
+{{- if and .Values.kong.manager.enabled .Values.kong.manager.ingress.enabled }}
+  Kong Manager GUI:   https://{{ .Values.kong.manager.ingress.host }}/
+{{- end }}
+
+{{- if .Values.citizen.ingress.enabled }}
+  Model Citizen:      https://{{ .Values.citizen.ingress.host }}/
+{{- end }}
+
+{{- if .Values.certosaur.ingress.enabled }}
+  Certosaur:          https://{{ .Values.certosaur.ingress.host }}/login/
+{{- end }}
+
+{{- if .Values.keycloak.ingress.enabled }}
+  Keycloak:           https://{{ .Values.keycloak.ingress.host }}/
+{{- end }}
+
+⏳ WAITING FOR CERTIFICATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cert-manager is issuing TLS certificates. This may take 1-5 minutes.
+
+Check certificate status:
+
+  kubectl get certificates -n {{ .Release.Namespace }}
+
+All certificates should show "Ready: True" before accessing the applications.
+
+🔧 NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Wait for all pods to be Ready:
+
+   kubectl get pods -n {{ .Release.Namespace }} -w
+
+2. Create Dogcatcher superuser:
+
+   DOGCATCHER_POD=$(kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/component=dogcatcher -o jsonpath='{.items[0].metadata.name}')
+   kubectl exec -it $DOGCATCHER_POD -n {{ .Release.Namespace }} -- python manage.py createsuperuser
+
+3. Configure Kong routes and authentication:
+   - Use Kong Admin API at https://{{ .Values.kong.admin.ingress.host }}/
+   - Or use Kong Manager GUI at https://{{ .Values.kong.manager.ingress.host }}/
+
+4. Configure Keycloak for OIDC:
+   - Login: admin / {{ .Values.keycloak.env.adminPassword }}
+   - Create realm, clients, and users
+
+📖 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For complete configuration and troubleshooting:
+  - DEPLOYMENT.md - Full deployment guide
+  - docs/KONG-DEPLOYMENT.md - Kong configuration
+  - docs/MTLS-SETUP.md - mTLS configuration
+  - docs/PROXY-MULTI-AUTH.md - Multi-auth configuration
+
+🧪 TEST THE DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Once certificates are ready, test the API:
+
+  # Public access (no auth)
+{{- if .Values.kong.proxy.ingress.enabled }}
+  curl https://{{ .Values.kong.proxy.ingress.host }}/public/dogs/
+{{- end }}
+
+  # Access Dogcatcher directly
+{{- if .Values.dogcatcher.ingress.enabled }}
+  curl https://{{ .Values.dogcatcher.ingress.host }}/api/dogs/
+{{- end }}
+
+⚠️  SECURITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The default values include example passwords and secrets.
+For production use:
+  - Generate secure random secrets
+  - Use Kubernetes Secrets or external secret management
+  - Enable network policies
+  - Configure proper RBAC
+
+To upgrade with new values:
+
+  helm upgrade {{ .Release.Name }} . -f my-values.yaml -n {{ .Release.Namespace }}
+
+To uninstall:
+
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Enjoy your API Gateway POC Demo! 🚀

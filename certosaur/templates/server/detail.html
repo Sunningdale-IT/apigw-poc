@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cert.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">🌋</div>
+        {{ cert.name }}
+    </h1>
+    <p class="page-description">
+        <span class="badge badge-{{ cert.status }}">{{ cert.status }}</span>
+        <span style="margin-left: 0.5rem; color: var(--text-secondary);">{{ cert.common_name }}</span>
+    </p>
+</div>
+
+{% if cert.status == 'active' %}
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">📥 Download Files</h3>
+    </div>
+    <div class="download-grid">
+        <a href="{% url 'server_cert_download' cert.pk 'cert' %}" class="btn btn-secondary">
+            📜 Certificate (.crt)
+        </a>
+        <a href="{% url 'server_cert_download' cert.pk 'key' %}" class="btn btn-warning">
+            🔑 Private Key (.key)
+        </a>
+        <a href="{% url 'server_cert_download' cert.pk 'chain' %}" class="btn btn-primary">
+            🔗 Full Chain (.crt)
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">📋 Certificate Details</h3>
+    </div>
+    
+    <div class="cert-detail-grid">
+        <div class="cert-info-item">
+            <span class="cert-info-label">Common Name</span>
+            <span class="cert-info-value">{{ cert.common_name }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Issuing CA</span>
+            <span class="cert-info-value">
+                <a href="{% url 'ca_detail' cert.issuing_ca.pk %}">{{ cert.issuing_ca.name }}</a>
+            </span>
+        </div>
+        
+        {% if cert.san_dns_names %}
+        <div class="cert-info-item">
+            <span class="cert-info-label">DNS Names (SANs)</span>
+            <span class="cert-info-value">{{ cert.san_dns_names }}</span>
+        </div>
+        {% endif %}
+        
+        {% if cert.san_ip_addresses %}
+        <div class="cert-info-item">
+            <span class="cert-info-label">IP Addresses</span>
+            <span class="cert-info-value">{{ cert.san_ip_addresses }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Organization</span>
+            <span class="cert-info-value">{{ cert.organization|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Key Size</span>
+            <span class="cert-info-value">{{ cert.key_size }}-bit RSA</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Forged On</span>
+            <span class="cert-info-value">{{ cert.valid_from|date:"M d, Y H:i" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Goes Extinct</span>
+            <span class="cert-info-value">
+                {{ cert.valid_until|date:"M d, Y H:i" }}
+                {% if cert.days_until_expiry < 30 and cert.status == 'active' %}
+                    <span class="badge badge-pending" style="margin-left: 0.5rem;">
+                        {{ cert.days_until_expiry }} days left
+                    </span>
+                {% endif %}
+            </span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Created By</span>
+            <span class="cert-info-value">{{ cert.created_by.username|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Created At</span>
+            <span class="cert-info-value">{{ cert.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        
+        {% if cert.status == 'revoked' %}
+        <div class="cert-info-item">
+            <span class="cert-info-label">Went Extinct At</span>
+            <span class="cert-info-value">{{ cert.revoked_at|date:"M d, Y H:i" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Extinction Reason</span>
+            <span class="cert-info-value">{{ cert.revocation_reason }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Certificate PEM -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">📜 Certificate (PEM)</h3>
+    </div>
+    <div class="cert-pem-box">{{ cert.certificate_pem }}</div>
+</div>
+
+<!-- Revoke Section -->
+{% if cert.status == 'active' %}
+<div class="card mb-3" style="border-color: var(--danger);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--danger);">☄️ Meteor Strike Zone</h3>
+    </div>
+    <form method="post" action="{% url 'server_cert_revoke' cert.pk %}" onsubmit="return confirm('Are you sure you want to make this certificate extinct? This cannot be undone!');">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="reason" class="form-label">Extinction Reason</label>
+            <select name="reason" id="reason" class="form-select">
+                <option value="unspecified">Unspecified</option>
+                <option value="key_compromise">Key Compromise</option>
+                <option value="ca_compromise">CA Compromise</option>
+                <option value="affiliation_changed">Affiliation Changed</option>
+                <option value="superseded">Superseded</option>
+                <option value="cessation_of_operation">Cessation of Operation</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="flex items-center gap-1">
+                <input type="checkbox" name="confirm" required class="form-checkbox">
+                I confirm I want to make this certificate extinct
+            </label>
+        </div>
+        <button type="submit" class="btn btn-danger">
+            ☄️ Revoke Certificate
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Delete Section -->
+<div class="card mb-3" style="border-color: var(--danger);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--danger);">🗑️ Delete Certificate</h3>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+        Permanently delete this certificate. This action cannot be undone.
+    </p>
+    <form method="post" action="{% url 'server_cert_delete' cert.pk %}" 
+          onsubmit="return confirm('Are you sure you want to permanently DELETE this certificate? This cannot be undone!');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            🗑️ Delete Certificate
+        </button>
+    </form>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'server_cert_list' %}" class="btn btn-outline">← Back to Server Certificates</a>
+</div>
+{% endblock %}

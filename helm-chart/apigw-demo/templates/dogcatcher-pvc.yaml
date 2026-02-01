@@ -1,0 +1,23 @@
+{{- if and .Values.dogcatcher.enabled .Values.dogcatcher.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-dogcatcher-uploads
+  labels:
+    {{- include "apigw-demo.dogcatcher.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.dogcatcher.persistence.accessMode }}
+  {{- if .Values.dogcatcher.persistence.storageClass }}
+  {{- if (eq "-" .Values.dogcatcher.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.dogcatcher.persistence.storageClass | quote }}
+  {{- end }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.dogcatcher.persistence.size }}
+{{- end }}

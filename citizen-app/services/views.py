@@ -5,9 +5,15 @@ import datetime
 import requests
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.conf import settings
-
+from django.conf import settingsfrom django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .decorators import login_required
+
+
+@csrf_exempt
+def health(request):
+    """Health check endpoint for Kubernetes probes."""
+    return JsonResponse({'status': 'healthy', 'service': 'model-citizen'})
 
 
 def get_citizen_info(request):

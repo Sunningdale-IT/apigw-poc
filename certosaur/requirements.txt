@@ -1,0 +1,14 @@
+# Django framework
+Django>=4.2,<5.0
+
+# Cryptography library for certificate generation
+cryptography>=41.0.0
+
+# For serving static files in production
+whitenoise>=6.6.0
+
+# Production WSGI server
+gunicorn>=21.2.0
+
+# For environment variable management
+python-dotenv>=1.0.0

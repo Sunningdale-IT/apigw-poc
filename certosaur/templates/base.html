@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Certosaur{% endblock %} | Certificate Portal 🦖</title>
+    
+    <!-- Google Fonts - Nunito for that fun, rounded look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Floating decorations - Dinosaur theme -->
+    <div class="decoration decoration-1">🦖</div>
+    <div class="decoration decoration-2">🦕</div>
+    <div class="decoration decoration-3">🥚</div>
+    
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🦖</div>
+                <div class="logo-text">Cert<span>osaur</span></div>
+            </div>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-section">
+                        <div class="nav-section-title">Dino Den</div>
+                        <ul>
+                            <li class="nav-item">
+                                <a href="{% url 'index' %}" class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+                                    <span class="nav-icon">🏠</span>
+                                    <span class="nav-text">Home Base</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-section">
+                        <div class="nav-section-title">Certificates</div>
+                        <ul>
+                            <li class="nav-item">
+                                <a href="{% url 'ca_list' %}" class="nav-link {% if 'ca' in request.path %}active{% endif %}">
+                                    <span class="nav-icon">🦴</span>
+                                    <span class="nav-text">Certificate Authorities</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'server_cert_list' %}" class="nav-link {% if 'server' in request.path %}active{% endif %}">
+                                    <span class="nav-icon">🌋</span>
+                                    <span class="nav-text">Server Certificates</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'client_cert_list' %}" class="nav-link {% if 'client' in request.path %}active{% endif %}">
+                                    <span class="nav-icon">🥚</span>
+                                    <span class="nav-text">Client Certificates</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-section">
+                        <div class="nav-section-title">Quick Hatch</div>
+                        <ul>
+                            <li class="nav-item">
+                                <a href="{% url 'ca_create' %}" class="nav-link">
+                                    <span class="nav-icon">➕</span>
+                                    <span class="nav-text">New CA</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'server_cert_create' %}" class="nav-link">
+                                    <span class="nav-icon">🔒</span>
+                                    <span class="nav-text">New Server Cert</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{% url 'client_cert_create' %}" class="nav-link">
+                                    <span class="nav-icon">🎫</span>
+                                    <span class="nav-text">New Client Cert</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+            
+            <!-- User Info -->
+            <div class="user-info">
+                <div class="user-avatar">{{ user.username|first|upper }}</div>
+                <div class="user-name">{{ user.username }}</div>
+                <a href="{% url 'logout' %}" class="user-logout">
+                    <span>🦶</span> Leave the Jurassic
+                </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        <span class="alert-icon">
+                            {% if message.tags == 'success' %}🦖{% elif message.tags == 'warning' %}⚠️{% elif message.tags == 'error' or message.tags == 'danger' %}☄️{% else %}🦕{% endif %}
+                        </span>
+                        <div>{{ message }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

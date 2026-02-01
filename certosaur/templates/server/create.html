@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Forge Server Certificate{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">🌋</div>
+        Forge Server Certificate
+    </h1>
+    <p class="page-description">Create a new SSL/TLS certificate in the volcanic forge</p>
+</div>
+
+<div class="card" style="max-width: 700px;">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_name" class="form-label">🦖 Certificate Name</label>
+            {{ form.name }}
+            <p class="form-help">A friendly name for this certificate</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="id_issuing_ca" class="form-label">🦴 Issuing CA</label>
+            {{ form.issuing_ca }}
+            <p class="form-help">Select which CA dino will sign this certificate</p>
+            <div id="root-ca-warning" class="alert alert-warning mt-2" style="display: none;">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                    <strong>Best Practice Warning:</strong> You've selected a Root CA. 
+                    It's recommended to use an Intermediate CA for signing certificates. 
+                    This protects your Root CA and limits damage if the signing key is compromised.
+                </div>
+            </div>
+        </div>
+        
+        <hr style="border: none; border-top: 2px dashed var(--border-color); margin: 2rem 0;">
+        
+        <h4 style="margin-bottom: 1rem;">🌐 Domain Information</h4>
+        
+        <div class="form-group">
+            <label for="id_common_name" class="form-label">Common Name (CN)</label>
+            {{ form.common_name }}
+            <p class="form-help">The primary domain name (e.g., www.dinotech.com)</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="id_san_dns_names" class="form-label">Subject Alternative Names (DNS)</label>
+            {{ form.san_dns_names }}
+            <p class="form-help">Additional domain names, comma-separated (e.g., dinotech.com, api.dinotech.com)</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="id_san_ip_addresses" class="form-label">IP Addresses (optional)</label>
+            {{ form.san_ip_addresses }}
+            <p class="form-help">IP addresses for the certificate, comma-separated</p>
+        </div>
+        
+        <hr style="border: none; border-top: 2px dashed var(--border-color); margin: 2rem 0;">
+        
+        <h4 style="margin-bottom: 1rem;">📋 Subject Details (optional)</h4>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_organization" class="form-label">Organization (O)</label>
+                {{ form.organization }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_organizational_unit" class="form-label">Organizational Unit (OU)</label>
+                {{ form.organizational_unit }}
+            </div>
+        </div>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_country" class="form-label">Country (C)</label>
+                {{ form.country }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_state" class="form-label">State/Province (ST)</label>
+                {{ form.state }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_locality" class="form-label">Locality/City (L)</label>
+                {{ form.locality }}
+            </div>
+        </div>
+        
+        <hr style="border: none; border-top: 2px dashed var(--border-color); margin: 2rem 0;">
+        
+        <h4 style="margin-bottom: 1rem;">⚙️ Certificate Options</h4>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_validity_days" class="form-label">Validity Period (days)</label>
+                {{ form.validity_days }}
+                <p class="form-help">Max: 825 days per industry guidelines</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_key_size" class="form-label">Key Size</label>
+                {{ form.key_size }}
+            </div>
+        </div>
+        
+        <div class="flex gap-2 mt-4">
+            <button type="submit" class="btn btn-secondary btn-lg">
+                🔥 Forge Server Certificate
+            </button>
+            <a href="{% url 'server_cert_list' %}" class="btn btn-outline btn-lg">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Root CA warning - check if selected CA is a Root CA
+document.addEventListener('DOMContentLoaded', function() {
+    var caSelect = document.getElementById('id_issuing_ca');
+    var warning = document.getElementById('root-ca-warning');
+    
+    // Root CA IDs passed from server (CAs where is_root=True)
+    var rootCaIds = [{% for ca in form.issuing_ca.field.queryset %}{% if ca.is_root %}'{{ ca.pk }}',{% endif %}{% endfor %}];
+    
+    function checkRootCA() {
+        if (caSelect && warning) {
+            var selectedId = caSelect.value;
+            if (rootCaIds.indexOf(selectedId) !== -1) {
+                warning.style.display = 'flex';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+    }
+    
+    if (caSelect) {
+        caSelect.addEventListener('change', checkRootCA);
+        checkRootCA(); // Check on page load
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{{- if .Values.kong.enabled }}
+{{- if and .Values.kong.proxy.enabled .Values.kong.proxy.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-proxy
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: proxy
+  {{- with .Values.kong.proxy.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.kong.proxy.ingress.className }}
+  {{- if .Values.kong.proxy.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.kong.proxy.ingress.host }}
+      secretName: {{ .Values.kong.proxy.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.kong.proxy.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" . }}-kong-proxy
+                port:
+                  number: {{ .Values.kong.proxy.service.port }}
+---
+{{- end }}
+{{- if and .Values.kong.admin.enabled .Values.kong.admin.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-admin
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+  {{- with .Values.kong.admin.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.kong.admin.ingress.className }}
+  {{- if .Values.kong.admin.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.kong.admin.ingress.host }}
+      secretName: {{ .Values.kong.admin.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.kong.admin.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" . }}-kong-admin
+                port:
+                  number: {{ .Values.kong.admin.service.port }}
+---
+{{- end }}
+{{- if and .Values.kong.manager.enabled .Values.kong.manager.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-manager
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+  {{- with .Values.kong.manager.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.kong.manager.ingress.className }}
+  {{- if .Values.kong.manager.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.kong.manager.ingress.host }}
+      secretName: {{ .Values.kong.manager.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.kong.manager.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" . }}-kong-manager
+                port:
+                  number: {{ .Values.kong.manager.service.port }}
+{{- end }}
+{{- end }}

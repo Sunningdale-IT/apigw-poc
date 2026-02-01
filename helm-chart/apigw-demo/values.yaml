@@ -1,0 +1,326 @@
+# Default values for apigw-demo
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  domain: jim00.pd.test-rig.nl
+  storageClass: default  # Use your cluster's default storage class
+  
+# Dogcatcher API - Dog Registry Application
+dogcatcher:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/dogcatcher-api
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+  
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod  # Adjust to your cert-manager issuer
+    host: dogcatcher.jim00.pd.test-rig.nl
+    tls:
+      enabled: true
+      secretName: dogcatcher-tls
+  
+  env:
+    djangoDebug: "false"
+    secretKey: "change-this-in-production-use-secret"
+    allowedHosts: "dogcatcher.jim00.pd.test-rig.nl,dogcatcher,localhost,*"
+    apiKeyRequired: "true"
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""  # Uses global.storageClass if empty
+    accessMode: ReadWriteOnce
+
+# PostgreSQL Database Server (Unified)
+postgres:
+  enabled: true
+  
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 5432
+  
+  persistence:
+    enabled: true
+    size: 20Gi  # Larger size to accommodate all databases
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  
+  env:
+    database: postgres
+    username: postgres
+    password: "postgres123"  # Master password - should be in a secret in production
+  
+  # Database configurations for each application
+  databases:
+    kong:
+      name: kong
+      username: kong
+      password: "kong123"
+    dogcatcher:
+      name: dogcatcher
+      username: dogcatcher
+      password: "dogcatcher123"
+    keycloak:
+      name: keycloak
+      username: keycloak
+      password: "keycloak123"
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Kong API Gateway
+kong:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/kong-oidc
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  admin:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 8001
+    ingress:
+      enabled: true
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: kong-admin.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-admin-tls
+  
+  manager:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 8002
+    ingress:
+      enabled: true
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: kong-manager.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-manager-tls
+  
+  proxy:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 8000
+    ingress:
+      enabled: true
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      host: kong.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-proxy-tls
+  
+  env:
+    database: postgres
+    plugins: "bundled,oidc"
+    adminGuiUrl: "https://kong-manager.jim00.pd.test-rig.nl"
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Model Citizen - Consumer Application
+citizen:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: docker.io/jimleitch/model-citizen
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+  
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    host: citizen.jim00.pd.test-rig.nl
+    tls:
+      enabled: true
+      secretName: citizen-tls
+  
+  env:
+    djangoDebug: "false"
+    secretKey: "citizen-secret-change-in-production"
+    allowedHosts: "citizen.jim00.pd.test-rig.nl,citizen,localhost,*"
+    apiGatewayUrl: "http://kong:8000/public"
+    dogcatcherPublicUrl: "https://kong.jim00.pd.test-rig.nl/public"
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Certosaur - Certificate Management Portal
+certosaur:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: docker.io/jimleitch/certosaur
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    host: certosaur.jim00.pd.test-rig.nl
+    tls:
+      enabled: true
+      secretName: certosaur-tls
+  
+  env:
+    djangoDebug: "false"
+    secretKey: "certosaur-secret-change-in-production"
+    allowedHosts: "certosaur.jim00.pd.test-rig.nl,certosaur,localhost,*"
+  
+  persistence:
+    data:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+    certs:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+# Keycloak - Identity Provider for OIDC
+keycloak:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "24.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    host: keycloak.jim00.pd.test-rig.nl
+    tls:
+      enabled: true
+      secretName: keycloak-tls
+  
+  env:
+    admin: admin
+    adminPassword: "admin"  # Should be in a secret in production
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Image pull secrets (if using private registry)
+imagePullSecrets: []
+# - name: regcred
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 1000
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

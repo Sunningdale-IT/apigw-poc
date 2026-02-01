@@ -1,0 +1,58 @@
+{{- if .Values.kong.enabled }}
+{{- if .Values.kong.proxy.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-proxy
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: proxy
+spec:
+  type: {{ .Values.kong.proxy.service.type }}
+  ports:
+    - port: {{ .Values.kong.proxy.service.port }}
+      targetPort: proxy
+      protocol: TCP
+      name: proxy
+  selector:
+    {{- include "apigw-demo.kong.selectorLabels" . | nindent 4 }}
+---
+{{- end }}
+{{- if .Values.kong.admin.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-admin
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+spec:
+  type: {{ .Values.kong.admin.service.type }}
+  ports:
+    - port: {{ .Values.kong.admin.service.port }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
+  selector:
+    {{- include "apigw-demo.kong.selectorLabels" . | nindent 4 }}
+---
+{{- end }}
+{{- if .Values.kong.manager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong-manager
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+spec:
+  type: {{ .Values.kong.manager.service.type }}
+  ports:
+    - port: {{ .Values.kong.manager.service.port }}
+      targetPort: manager
+      protocol: TCP
+      name: manager
+  selector:
+    {{- include "apigw-demo.kong.selectorLabels" . | nindent 4 }}
+{{- end }}
+{{- end }}

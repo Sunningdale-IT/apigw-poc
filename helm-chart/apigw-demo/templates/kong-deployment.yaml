@@ -1,0 +1,119 @@
+{{- if .Values.kong.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-kong
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kong.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.kong.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.kong.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: postgres:16-alpine
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until pg_isready -h {{ include "apigw-demo.fullname" . }}-postgres-0.{{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgres.databases.kong.username }}; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      - name: wait-for-migrations
+        image: busybox:1.36
+        command: ['sh', '-c', 'echo "Waiting for migrations to complete..."; sleep 15']
+      containers:
+      - name: kong
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.kong.image.repository }}:{{ .Values.kong.image.tag }}"
+        imagePullPolicy: {{ .Values.kong.image.pullPolicy }}
+        ports:
+        - name: proxy
+          containerPort: 8000
+          protocol: TCP
+        - name: admin
+          containerPort: 8001
+          protocol: TCP
+        - name: manager
+          containerPort: 8002
+          protocol: TCP
+        env:
+        - name: KONG_DATABASE
+          value: {{ .Values.kong.env.database | quote }}
+        - name: KONG_PG_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres-0.{{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: KONG_PG_PORT
+          value: "5432"
+        - name: KONG_PG_DATABASE
+          value: {{ .Values.postgres.databases.kong.name | quote }}
+        - name: KONG_PG_USER
+          value: {{ .Values.postgres.databases.kong.username | quote }}
+        - name: KONG_PG_PASSWORD
+          value: {{ .Values.postgres.databases.kong.password | quote }}
+        - name: KONG_PROXY_ACCESS_LOG
+          value: /dev/stdout
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: /dev/stdout
+        - name: KONG_PROXY_ERROR_LOG
+          value: /dev/stderr
+        - name: KONG_ADMIN_ERROR_LOG
+          value: /dev/stderr
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        - name: KONG_PROXY_LISTEN
+          value: "0.0.0.0:8000"
+        - name: KONG_ADMIN_GUI_LISTEN
+          value: "0.0.0.0:8002"
+        - name: KONG_ADMIN_GUI_URL
+          value: {{ .Values.kong.env.adminGuiUrl | quote }}
+        - name: KONG_PLUGINS
+          value: {{ .Values.kong.env.plugins | quote }}
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: admin
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: admin
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.kong.resources | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

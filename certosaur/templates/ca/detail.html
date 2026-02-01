@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ ca.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">{% if ca.is_root %}🦖{% else %}🦕{% endif %}</div>
+        {{ ca.name }}
+    </h1>
+    <p class="page-description">
+        <span class="badge {% if ca.is_root %}badge-root{% else %}badge-intermediate{% endif %}">
+            {% if ca.is_root %}🦖 ROOT CA (Alpha){% else %}🦕 INTERMEDIATE CA (Beta){% endif %}
+        </span>
+        {% if ca.is_valid %}
+            <span class="badge badge-active" style="margin-left: 0.5rem;">Alive</span>
+        {% else %}
+            <span class="badge badge-expired" style="margin-left: 0.5rem;">Extinct</span>
+        {% endif %}
+    </p>
+</div>
+
+<!-- CA Type Explanation Box -->
+<div class="card mb-3" style="border-color: {% if ca.is_root %}var(--primary){% else %}var(--secondary){% endif %}; border-width: 2px;">
+    <div class="flex items-center gap-2" style="padding: 0.5rem 0;">
+        <span style="font-size: 2rem;">{% if ca.is_root %}🦖{% else %}🦕{% endif %}</span>
+        <div>
+            {% if ca.is_root %}
+                <strong style="color: var(--primary);">Root CA (Alpha Dinosaur)</strong>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">
+                    This is a self-signed root certificate - the apex predator of your PKI hierarchy. 
+                    <strong>Best Practice:</strong> Create Intermediate CAs from this Root and use those for signing certificates.
+                    Keep the Root CA private key secure and offline when possible.
+                </p>
+            {% else %}
+                <strong style="color: var(--secondary);">Intermediate CA (Beta Dinosaur)</strong>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary);">
+                    This CA is signed by a parent CA. Use this for issuing end-entity certificates (server/client).
+                    If this CA is compromised, you can revoke it without replacing the Root CA.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if ca.is_root %}
+<!-- Best Practice Warning for Root CA -->
+<div class="alert alert-warning mb-3">
+    <span class="alert-icon">⚠️</span>
+    <div>
+        <strong>Best Practice Reminder:</strong> You should create an Intermediate CA from this Root CA 
+        and use the Intermediate for signing certificates. This protects your Root CA and limits damage if 
+        the signing CA is compromised.
+        <a href="{% url 'ca_create' %}" style="margin-left: 0.5rem;">Create Intermediate CA →</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">📋 Certificate Details</h3>
+        <div class="download-grid">
+            <a href="{% url 'ca_download' ca.pk 'cert' %}" class="btn btn-secondary btn-sm">
+                📥 Download Certificate
+            </a>
+            <a href="{% url 'ca_download' ca.pk 'key' %}" class="btn btn-warning btn-sm">
+                🔑 Download Private Key
+            </a>
+        </div>
+    </div>
+    
+    <div class="cert-detail-grid">
+        <div class="cert-info-item">
+            <span class="cert-info-label">Common Name</span>
+            <span class="cert-info-value">{{ ca.common_name }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">CA Type</span>
+            <span class="cert-info-value">
+                {% if ca.is_root %}
+                    🦖 Root (Self-Signed)
+                {% else %}
+                    🦕 Intermediate (Signed by {{ ca.parent_ca.name }})
+                {% endif %}
+            </span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Organization</span>
+            <span class="cert-info-value">{{ ca.organization|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Organizational Unit</span>
+            <span class="cert-info-value">{{ ca.organizational_unit|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Country</span>
+            <span class="cert-info-value">{{ ca.country|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Hatched On</span>
+            <span class="cert-info-value">{{ ca.valid_from|date:"M d, Y H:i" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Goes Extinct</span>
+            <span class="cert-info-value">
+                {{ ca.valid_until|date:"M d, Y H:i" }}
+                {% if ca.days_until_expiry < 30 %}
+                    <span class="badge badge-pending" style="margin-left: 0.5rem;">
+                        {{ ca.days_until_expiry }} days left
+                    </span>
+                {% endif %}
+            </span>
+        </div>
+        
+        {% if ca.parent_ca %}
+            <div class="cert-info-item">
+                <span class="cert-info-label">Parent CA</span>
+                <span class="cert-info-value">
+                    <a href="{% url 'ca_detail' ca.parent_ca.pk %}">🦖 {{ ca.parent_ca.name }}</a>
+                </span>
+            </div>
+        {% endif %}
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Hatched By</span>
+            <span class="cert-info-value">{{ ca.created_by.username|default:"-" }}</span>
+        </div>
+        
+        <div class="cert-info-item">
+            <span class="cert-info-label">Created At</span>
+            <span class="cert-info-value">{{ ca.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Certificate PEM -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title">📜 Certificate (PEM)</h3>
+    </div>
+    <div class="cert-pem-box">{{ ca.certificate_pem }}</div>
+</div>
+
+<!-- Child CAs -->
+{% if child_cas %}
+<div class="card mb-3" style="border-color: var(--secondary);">
+    <div class="card-header">
+        <h3 class="card-title">🦕 Intermediate CAs (Offspring)</h3>
+        <a href="{% url 'ca_create' %}" class="btn btn-secondary btn-sm">+ Create Intermediate</a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for child in child_cas %}
+            <div class="flex items-center justify-between" style="padding: 0.75rem; background: var(--bg-primary); border-radius: 8px;">
+                <div>
+                    <a href="{% url 'ca_detail' child.pk %}" style="font-weight: 700;">🦕 {{ child.name }}</a>
+                    <span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 0.5rem;">{{ child.common_name }}</span>
+                </div>
+                <span class="badge badge-intermediate">Intermediate</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+{% if ca.is_root %}
+<div class="card mb-3" style="border: 2px dashed var(--secondary);">
+    <div class="text-center" style="padding: 2rem;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🥚</div>
+        <h4>No Intermediate CAs Yet</h4>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Create an Intermediate CA to use for signing certificates (recommended best practice)
+        </p>
+        <a href="{% url 'ca_create' %}" class="btn btn-secondary">
+            🦕 Hatch an Intermediate CA
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Issued Certificates Summary -->
+<div class="cert-detail-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">🌋 Server Certificates</h3>
+            <a href="{% url 'server_cert_create' %}" class="btn btn-secondary btn-sm">+ New</a>
+        </div>
+        {% if server_certs %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for cert in server_certs %}
+                    <div class="flex items-center justify-between" style="padding: 0.5rem; background: var(--bg-primary); border-radius: 8px;">
+                        <a href="{% url 'server_cert_detail' cert.pk %}">{{ cert.name }}</a>
+                        <span class="badge badge-{{ cert.status }}">{{ cert.status }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">No server certs issued by this CA.</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">🥚 Client Certificates</h3>
+            <a href="{% url 'client_cert_create' %}" class="btn btn-accent btn-sm">+ New</a>
+        </div>
+        {% if client_certs %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for cert in client_certs %}
+                    <div class="flex items-center justify-between" style="padding: 0.5rem; background: var(--bg-primary); border-radius: 8px;">
+                        <a href="{% url 'client_cert_detail' cert.pk %}">{{ cert.name }}</a>
+                        <span class="badge badge-{{ cert.status }}">{{ cert.status }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: var(--text-secondary); text-align: center; padding: 1rem;">No client certs issued by this CA.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Danger Zone - Delete CA -->
+<div class="card mb-3 mt-3" style="border-color: var(--danger);">
+    <div class="card-header">
+        <h3 class="card-title" style="color: var(--danger);">☄️ Danger Zone</h3>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+        Deleting a CA is permanent and cannot be undone. You can only delete a CA if it has no issued certificates or child CAs.
+    </p>
+    <form method="post" action="{% url 'ca_delete' ca.pk %}" 
+          onsubmit="return confirm('Are you sure you want to delete this CA? This action cannot be undone!');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            ☄️ Delete this CA
+        </button>
+    </form>
+</div>
+
+<div class="mt-3">
+    <a href="{% url 'ca_list' %}" class="btn btn-outline">← Back to CA Herd</a>
+</div>
+{% endblock %}

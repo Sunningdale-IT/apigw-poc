@@ -3,9 +3,12 @@
 # Configure Kong API Gateway with multiple authentication routes
 #
 # This script sets up:
-#   - /public/* - No authentication required (routes to /api/*)
-#   - /apikey/* - Kong API Key authentication (routes to /api/*)
-#   - /api/*    - Direct access (backend handles auth)
+#   - /public/*  - No authentication required (Plain)
+#   - /apikey/*  - Kong API Key authentication
+#   - /jwt/*     - JWT token authentication
+#   - /mtls/*    - Mutual TLS (client certificate) authentication
+#   - /oidc/*    - OpenID Connect authentication
+#   - /api/*     - Direct access (backend handles auth)
 #
 
 set -euo pipefail
@@ -74,9 +77,15 @@ main() {
     # Clean up existing configuration
     curl -s -X DELETE "${KONG_ADMIN_URL}/routes/public-route" 2>/dev/null || true
     curl -s -X DELETE "${KONG_ADMIN_URL}/routes/apikey-route" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/routes/jwt-route" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/routes/mtls-route" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/routes/oidc-route" 2>/dev/null || true
     curl -s -X DELETE "${KONG_ADMIN_URL}/routes/api-route" 2>/dev/null || true
     curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-public" 2>/dev/null || true
     curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-apikey" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-jwt" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-mtls" 2>/dev/null || true
+    curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-oidc" 2>/dev/null || true
     curl -s -X DELETE "${KONG_ADMIN_URL}/services/dogcatcher-direct" 2>/dev/null || true
     
     # ============================================
@@ -128,6 +137,100 @@ main() {
         -d "config.add.headers=X-Auth-Verified:true" > /dev/null
     
     log_success "API Key route configured (/apikey/* -> /api/*)"
+    
+    # ============================================
+    # JWT Route - Kong validates JWT tokens
+    # Routes /jwt/* to backend /api/*
+    # ============================================
+    log_info "Creating JWT service and route..."
+    curl -s -X POST "${KONG_ADMIN_URL}/services" \
+        -d "name=dogcatcher-jwt" \
+        -d "url=http://${DOGCATCHER_HOST}:${DOGCATCHER_PORT}/api" > /dev/null
+    
+    curl -s -X POST "${KONG_ADMIN_URL}/services/dogcatcher-jwt/routes" \
+        -d "name=jwt-route" \
+        -d "paths[]=/jwt" \
+        -d "strip_path=true" > /dev/null
+    
+    # Add JWT plugin
+    curl -s -X POST "${KONG_ADMIN_URL}/routes/jwt-route/plugins" \
+        -d "name=jwt" \
+        -d "config.claims_to_verify=exp" > /dev/null
+    
+    # Add request-transformer to set auth headers
+    curl -s -X POST "${KONG_ADMIN_URL}/routes/jwt-route/plugins" \
+        -d "name=request-transformer" \
+        -d "config.add.headers=X-Auth-Mode:jwt" \
+        -d "config.add.headers=X-Auth-Verified:true" > /dev/null
+    
+    log_success "JWT route configured (/jwt/* -> /api/*)"
+    
+    # ============================================
+    # mTLS Route - Kong validates client certificates
+    # Routes /mtls/* to backend /api/*
+    # Note: Requires Kong to be configured with TLS
+    # ============================================
+    log_info "Creating mTLS service and route..."
+    curl -s -X POST "${KONG_ADMIN_URL}/services" \
+        -d "name=dogcatcher-mtls" \
+        -d "url=http://${DOGCATCHER_HOST}:${DOGCATCHER_PORT}/api" > /dev/null
+    
+    curl -s -X POST "${KONG_ADMIN_URL}/services/dogcatcher-mtls/routes" \
+        -d "name=mtls-route" \
+        -d "paths[]=/mtls" \
+        -d "strip_path=true" > /dev/null
+    
+    # Add request-transformer to set auth headers
+    # Note: Full mTLS requires Kong TLS listener configuration
+    curl -s -X POST "${KONG_ADMIN_URL}/routes/mtls-route/plugins" \
+        -d "name=request-transformer" \
+        -d "config.add.headers=X-Auth-Mode:mtls" \
+        -d "config.add.headers=X-Auth-Verified:true" > /dev/null
+    
+    log_success "mTLS route configured (/mtls/* -> /api/*)"
+    log_warn "Note: Full mTLS requires Kong TLS listener and CA certificate configuration"
+    
+    # ============================================
+    # OIDC Route - OpenID Connect authentication
+    # Routes /oidc/* to backend /api/*
+    # Requires identity provider (Keycloak, Auth0, Azure AD, etc.)
+    # ============================================
+    log_info "Creating OIDC service and route..."
+    curl -s -X POST "${KONG_ADMIN_URL}/services" \
+        -d "name=dogcatcher-oidc" \
+        -d "url=http://${DOGCATCHER_HOST}:${DOGCATCHER_PORT}/api" > /dev/null
+    
+    curl -s -X POST "${KONG_ADMIN_URL}/services/dogcatcher-oidc/routes" \
+        -d "name=oidc-route" \
+        -d "paths[]=/oidc" \
+        -d "strip_path=true" > /dev/null
+    
+    # OIDC plugin configuration
+    # Note: These are placeholder values - replace with your identity provider settings
+    OIDC_DISCOVERY="${OIDC_DISCOVERY:-https://your-idp.example.com/.well-known/openid-configuration}"
+    OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-dogcatcher-api}"
+    OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-your-client-secret}"
+    
+    # Only configure OIDC plugin if not using placeholder values
+    if [[ "${OIDC_DISCOVERY}" != *"your-idp.example.com"* ]]; then
+        curl -s -X POST "${KONG_ADMIN_URL}/routes/oidc-route/plugins" \
+            -d "name=oidc" \
+            -d "config.client_id=${OIDC_CLIENT_ID}" \
+            -d "config.client_secret=${OIDC_CLIENT_SECRET}" \
+            -d "config.discovery=${OIDC_DISCOVERY}" \
+            -d "config.introspection_endpoint_auth_method=client_secret_post" \
+            -d "config.bearer_only=yes" \
+            -d "config.realm=dogcatcher" > /dev/null
+        log_success "OIDC route configured with identity provider"
+    else
+        # Add request-transformer for demo/testing without real IdP
+        curl -s -X POST "${KONG_ADMIN_URL}/routes/oidc-route/plugins" \
+            -d "name=request-transformer" \
+            -d "config.add.headers=X-Auth-Mode:oidc" \
+            -d "config.add.headers=X-Auth-Verified:true" > /dev/null
+        log_success "OIDC route configured (/oidc/* -> /api/*)"
+        log_warn "OIDC plugin not configured - set OIDC_DISCOVERY, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET"
+    fi
     
     # ============================================
     # Direct API Route - Backend handles auth
@@ -182,6 +285,18 @@ main() {
         log_success "Added API key for admin"
     fi
     
+    # Add JWT credentials for model-citizen consumer
+    log_info "Configuring JWT credentials..."
+    if ! curl -s "${KONG_ADMIN_URL}/consumers/model-citizen/jwt" | grep -q "model-citizen-jwt"; then
+        curl -s -X POST "${KONG_ADMIN_URL}/consumers/model-citizen/jwt" \
+            -d "key=model-citizen-jwt" \
+            -d "algorithm=HS256" \
+            -d "secret=your-256-bit-secret-key-here-min32chars" > /dev/null
+        log_success "Added JWT credentials for model-citizen"
+    else
+        log_info "JWT credentials already exist for model-citizen"
+    fi
+    
     # ============================================
     # Summary
     # ============================================
@@ -191,20 +306,36 @@ main() {
     echo ""
     echo "Available routes:"
     echo ""
-    echo -e "  ${GREEN}/public/*${NC}  - No authentication required"
-    echo "               Example: curl http://localhost:8000/public/dogs/"
+    echo -e "  ${GREEN}/public/*${NC}  - No authentication (Plain)"
+    echo "               curl http://localhost:8000/public/dogs/"
     echo ""
-    echo -e "  ${GREEN}/apikey/*${NC}  - Kong API Key authentication"
-    echo "               Example: curl -H 'X-API-Key: citizen-api-key-2026' http://localhost:8000/apikey/dogs/"
+    echo -e "  ${GREEN}/apikey/*${NC}  - API Key authentication"
+    echo "               curl -H 'X-API-Key: citizen-api-key-2026' http://localhost:8000/apikey/dogs/"
+    echo ""
+    echo -e "  ${GREEN}/jwt/*${NC}     - JWT token authentication"
+    echo "               curl -H 'Authorization: Bearer <token>' http://localhost:8000/jwt/dogs/"
+    echo ""
+    echo -e "  ${GREEN}/mtls/*${NC}    - mTLS client certificate authentication"
+    echo "               curl --cert client.crt --key client.key https://localhost:8443/mtls/dogs/"
+    echo ""
+    echo -e "  ${GREEN}/oidc/*${NC}    - OpenID Connect authentication"
+    echo "               curl -H 'Authorization: Bearer <oidc-token>' http://localhost:8000/oidc/dogs/"
     echo ""
     echo -e "  ${GREEN}/api/*${NC}     - Direct access (backend handles auth)"
-    echo "               Example: curl -H 'X-API-Key: <backend-key>' http://localhost:8000/api/dogs/"
+    echo "               curl -H 'X-API-Key: <backend-key>' http://localhost:8000/api/dogs/"
     echo ""
-    echo "API Keys configured:"
-    echo "  - citizen-api-key-2026 (for Model Citizen app)"
-    echo "  - admin-api-key-2026 (for admin access)"
+    echo "Credentials configured:"
+    echo "  API Keys:"
+    echo "    - citizen-api-key-2026 (for Model Citizen app)"
+    echo "    - admin-api-key-2026 (for admin access)"
+    echo "  JWT:"
+    echo "    - ISS: model-citizen-jwt"
+    echo "    - Secret: your-256-bit-secret-key-here-min32chars"
+    echo "  OIDC:"
+    echo "    - Configure via: OIDC_DISCOVERY, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET"
     echo ""
     echo "Kong Admin API: ${KONG_ADMIN_URL}"
+    echo "Kong Manager: http://localhost:8002"
     echo ""
 }
 

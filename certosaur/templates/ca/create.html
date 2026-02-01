@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Hatch Certificate Authority{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <div class="page-title-icon">🥚</div>
+        Hatch Certificate Authority
+    </h1>
+    <p class="page-description">Set up a new alpha or beta CA</p>
+</div>
+
+<div class="card" style="max-width: 700px;">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_name" class="form-label">🦖 CA Name</label>
+            {{ form.name }}
+            <p class="form-help">A friendly name for this dino (e.g., "Production Alpha CA")</p>
+            {% if form.name.errors %}
+                <p style="color: var(--danger); font-size: 0.85rem;">{{ form.name.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="id_parent_ca" class="form-label">🔗 Parent CA (optional)</label>
+            {{ form.parent_ca }}
+            <p class="form-help">Leave empty to create an Alpha (Root) CA, or select a parent to create a Beta (Intermediate) CA</p>
+        </div>
+        
+        <hr style="border: none; border-top: 2px dashed var(--border-color); margin: 2rem 0;">
+        
+        <h4 style="margin-bottom: 1rem;">📋 Subject Details</h4>
+        
+        <div class="form-group">
+            <label for="id_common_name" class="form-label">Common Name (CN)</label>
+            {{ form.common_name }}
+            <p class="form-help">The official name for this CA (e.g., "DinoTech Root CA")</p>
+        </div>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_organization" class="form-label">Organization (O)</label>
+                {{ form.organization }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_organizational_unit" class="form-label">Organizational Unit (OU)</label>
+                {{ form.organizational_unit }}
+            </div>
+        </div>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_country" class="form-label">Country (C)</label>
+                {{ form.country }}
+                <p class="form-help">2-letter country code</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_state" class="form-label">State/Province (ST)</label>
+                {{ form.state }}
+            </div>
+            
+            <div class="form-group">
+                <label for="id_locality" class="form-label">Locality/City (L)</label>
+                {{ form.locality }}
+            </div>
+        </div>
+        
+        <hr style="border: none; border-top: 2px dashed var(--border-color); margin: 2rem 0;">
+        
+        <h4 style="margin-bottom: 1rem;">⚙️ Certificate Options</h4>
+        
+        <div class="cert-detail-grid">
+            <div class="form-group">
+                <label for="id_validity_days" class="form-label">Validity Period (days)</label>
+                {{ form.validity_days }}
+                <p class="form-help">Default: 3650 (10 dino years)</p>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_key_size" class="form-label">Key Size</label>
+                {{ form.key_size }}
+                <p class="form-help">4096-bit recommended for mighty CAs</p>
+            </div>
+        </div>
+        
+        <div class="flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                🦖 Hatch Certificate Authority
+            </button>
+            <a href="{% url 'ca_list' %}" class="btn btn-outline btn-lg">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
