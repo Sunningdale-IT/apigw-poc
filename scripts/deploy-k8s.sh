@@ -68,7 +68,7 @@ build_images() {
     docker build --platform linux/amd64 -t "$REGISTRY/dogcatcher-api:$TAG" "$REPO_ROOT/app" || exit 1
     docker build --platform linux/amd64 -t "$REGISTRY/kong-oidc:$TAG" "$REPO_ROOT/kong" || exit 1
     docker build --platform linux/amd64 -t "$REGISTRY/model-citizen:$TAG" "$REPO_ROOT/citizen-app" || exit 1
-    docker build --platform linux/amd64 -t "$REGISTRY/certosaur:$TAG" "$REPO_ROOT/certosaur" || exit 1
+    docker build --platform linux/amd64 -t "$REGISTRY/certosaurus:$TAG" "$REPO_ROOT/certosaurus" || exit 1
     
     echo ""
     echo -e "${YELLOW}Do you want to push images to registry? (y/n)${NC}"
@@ -79,7 +79,7 @@ build_images() {
         docker push "$REGISTRY/dogcatcher-api:$TAG" || exit 1
         docker push "$REGISTRY/kong-oidc:$TAG" || exit 1
         docker push "$REGISTRY/model-citizen:$TAG" || exit 1
-        docker push "$REGISTRY/certosaur:$TAG" || exit 1
+        docker push "$REGISTRY/certosaurus:$TAG" || exit 1
         echo -e "${GREEN}✓ Images pushed successfully${NC}"
     fi
     echo ""
@@ -171,7 +171,7 @@ show_next_steps() {
     echo "   - Kong Proxy: https://kong.jim00.pd.test-rig.nl/"
     echo "   - Kong Manager: https://kong-manager.jim00.pd.test-rig.nl/"
     echo "   - Model Citizen: https://citizen.jim00.pd.test-rig.nl/"
-    echo "   - Certosaur: https://certosaur.jim00.pd.test-rig.nl/login/"
+    echo "   - Certosaurus: https://certosaurus.jim00.pd.test-rig.nl/login/"
     echo "   - Keycloak: https://keycloak.jim00.pd.test-rig.nl/"
     echo ""
     echo -e "${YELLOW}For detailed instructions, see: $HELM_CHART_DIR/DEPLOYMENT.md${NC}"

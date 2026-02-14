@@ -8,7 +8,7 @@ The Helm chart deploys:
 - **Dogcatcher API** (Django REST) with PostgreSQL database
 - **Kong Gateway** with PostgreSQL database
 - **Model Citizen** portal application  
-- **Certosaur** certificate management
+- **Certosaurus** certificate management
 - **Keycloak** OIDC identity provider
 
 All components are configured with:
@@ -63,13 +63,13 @@ TAG="v1.0.0"
 docker build -t $REGISTRY/dogcatcher-api:$TAG ./app
 docker build -t $REGISTRY/kong-oidc:$TAG ./kong
 docker build -t $REGISTRY/model-citizen:$TAG ./citizen-app
-docker build -t $REGISTRY/certosaur:$TAG ./certosaur
+docker build -t $REGISTRY/certosaurus:$TAG ./certosaur
 
 # Push images
 docker push $REGISTRY/dogcatcher-api:$TAG
 docker push $REGISTRY/kong-oidc:$TAG
 docker push $REGISTRY/model-citizen:$TAG
-docker push $REGISTRY/certosaur:$TAG
+docker push $REGISTRY/certosaurus:$TAG
 ```
 
 ### 2. Configure my-values.yaml
@@ -97,7 +97,7 @@ dogcatcherDb:
   env:
     password: "secure-password-here"
 
-# Similar for kong, citizen, certosaur, keycloak
+# Similar for kong, citizen, certosaurus, keycloak
 ```
 
 ### 3. Verify Prerequisites
@@ -156,7 +156,7 @@ kubectl exec -it $DOGCATCHER_POD -n apigw-demo -- python manage.py createsuperus
 | Kong Admin API | https://kong-admin.jim00.pd.test-rig.nl/ |
 | Kong Manager | https://kong-manager.jim00.pd.test-rig.nl/ |
 | Model Citizen | https://citizen.jim00.pd.test-rig.nl/ |
-| Certosaur | https://certosaur.jim00.pd.test-rig.nl/login/ |
+| Certosaurus | https://certosaurus.jim00.pd.test-rig.nl/login/ |
 | Keycloak | https://keycloak.jim00.pd.test-rig.nl/ |
 
 ## Testing
@@ -227,7 +227,7 @@ Dogcatcher     Kong          Citizen
     │             │              
 PostgreSQL    PostgreSQL     
     
-Certosaur     Keycloak
+Certosaurus     Keycloak
 ```
 
 ## Support

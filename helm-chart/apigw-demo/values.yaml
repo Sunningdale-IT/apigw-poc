@@ -206,7 +206,7 @@ citizen:
       cpu: 250m
       memory: 256Mi
 
-# Certosaur - Certificate Management Portal
+# Certosaurus - Certificate Management Portal
 certosaurus:
   enabled: true
   replicaCount: 1
