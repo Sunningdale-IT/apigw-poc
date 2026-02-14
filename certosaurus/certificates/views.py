@@ -1,5 +1,5 @@
 """
-Views for Certosaur certificate management portal. 🦖
+Views for Certosaurus certificate management portal. 🦖
 RAWR! Let's make some certificates!
 """
 
@@ -31,7 +31,7 @@ from .cert_utils import (
 @csrf_exempt
 def health(request):
     """Health check endpoint for Kubernetes probes."""
-    return JsonResponse({'status': 'healthy', 'service': 'certosaur'})
+    return JsonResponse({'status': 'healthy', 'service': 'certosaurus'})
 
 
 def index(request):
@@ -87,7 +87,7 @@ def login_view(request):
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
             login(request, form.get_user())
-            messages.success(request, 'RAWR! Welcome to Certosaur! 🦖')
+            messages.success(request, 'RAWR! Welcome to Certosaurus! 🦖')
             return redirect('index')
     else:
         form = LoginForm()

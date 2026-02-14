@@ -24,16 +24,16 @@ COPY . .
 
 # Create directories, user, and set permissions in single layer
 RUN mkdir -p staticfiles certificates_storage media data && \
-    useradd -m -u 1000 certosaur && \
-    chown -R certosaur:certosaur /app && \
+    useradd -m -u 1000 certosaurus && \
+    chown -R certosaurus:certosaurus /app && \
     chmod 755 /app/data
 
 # Copy and set entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh && chown certosaur:certosaur /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh && chown certosaurus:certosaurus /docker-entrypoint.sh
 
 # Collect static files as non-root user
-USER certosaur
+USER certosaurus
 RUN python manage.py collectstatic --noinput
 
 # Expose port

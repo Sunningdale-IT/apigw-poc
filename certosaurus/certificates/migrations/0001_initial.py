@@ -1,4 +1,4 @@
-# Generated migration for Certosaur 🦖
+# Generated migration for Certosaurus 🦖
 
 import uuid
 from django.conf import settings

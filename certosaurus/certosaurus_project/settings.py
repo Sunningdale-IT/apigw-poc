@@ -1,5 +1,5 @@
 """
-Django settings for Certosaur project.
+Django settings for Certosaurus project.
 A roaringly good certificate management portal! 🦖
 """
 
@@ -39,7 +39,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'certosaur_project.urls'
+ROOT_URLCONF = 'certosaurus_project.urls'
 
 TEMPLATES = [
     {
@@ -57,7 +57,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'certosaur_project.wsgi.application'
+WSGI_APPLICATION = 'certosaurus_project.wsgi.application'
 
 # Database
 # Use /app/data directory for persistent storage in Docker
