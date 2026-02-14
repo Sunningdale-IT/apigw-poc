@@ -117,7 +117,7 @@ cd helm-chart/apigw-demo
 # Build images (if needed)
 docker build --platform linux/amd64 -t <your-registry>/dogcatcher:latest -f ../../app/Dockerfile ../../app
 docker build --platform linux/amd64 -t <your-registry>/citizen:latest -f ../../citizen-app/Dockerfile ../../citizen-app
-docker build --platform linux/amd64 -t <your-registry>/certosaurus:latest -f ../../certosaurus/Dockerfile ../../certosaur
+docker build --platform linux/amd64 -t <your-registry>/certosaurus:latest -f ../../certosaurus/Dockerfile ../../certosaurus
 
 # Push to registry
 docker push <your-registry>/dogcatcher:latest

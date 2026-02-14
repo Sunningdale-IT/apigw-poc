@@ -46,7 +46,7 @@ docker build -t <your-registry>/kong-oidc:v1.0.0 ./kong
 docker build -t <your-registry>/model-citizen:v1.0.0 ./citizen-app
 
 # Build Certosaurus
-docker build -t <your-registry>/certosaurusus:v1.0.0 ./certosaur
+docker build -t <your-registry>/certosaurus:v1.0.0 ./certosaurus
 ```
 
 ### 1.2 Push Images to Registry
@@ -59,7 +59,7 @@ docker login <your-registry>
 docker push <your-registry>/dogcatcher-api:v1.0.0
 docker push <your-registry>/kong-oidc:v1.0.0
 docker push <your-registry>/model-citizen:v1.0.0
-docker push <your-registry>/certosaurusus:v1.0.0
+docker push <your-registry>/certosaurus:v1.0.0
 ```
 
 **Note:** Replace `<your-registry>` with your actual registry URL (e.g., `myregistry.azurecr.io`)
