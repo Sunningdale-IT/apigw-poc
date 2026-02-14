@@ -1,5 +1,5 @@
 """
-Certificate models for Certosaur. 🦖
+Certificate models for Certosaurus. 🦖
 A roaringly good certificate management system!
 """
 

@@ -1,6 +1,6 @@
 """
 Certificate generation utilities using cryptography library.
-Certosaur - Prehistoric-powered certificate generation! 🦕
+Certosaurus - Prehistoric-powered certificate generation! 🦕
 """
 
 import os

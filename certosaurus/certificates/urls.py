@@ -1,5 +1,5 @@
 """
-URL configuration for Certosaur certificates app. 🦖
+URL configuration for Certosaurus certificates app. 🦖
 """
 
 from django.urls import path

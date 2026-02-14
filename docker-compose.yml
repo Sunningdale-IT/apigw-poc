@@ -161,19 +161,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Certosaur - Prehistoric Certificate Management Portal 🦖
-  certosaur:
-    build: ./certosaur
-    container_name: certosaur
+  # Certosaurus - Prehistoric Certificate Management Portal 🦖
+  certosaurus:
+    build: ./certosaurus
+    container_name: certosaurus
     environment:
-      DJANGO_SECRET_KEY: ${CERTOSAUR_SECRET_KEY:-certosaur-secret-change-in-production}
+      DJANGO_SECRET_KEY: ${CERTOSAURUS_SECRET_KEY:-certosaurus-secret-change-in-production}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
-      DJANGO_ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,certosaur}
+      DJANGO_ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,certosaurus}
     ports:
       - "5003:8000"
     volumes:
-      - certosaur_data:/app/data
-      - certosaur_certs:/app/certificates_storage
+      - certosaurus_data:/app/data
+      - certosaurus_certs:/app/certificates_storage
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/login/')"]
@@ -207,5 +207,5 @@ volumes:
   uploads:
   letsencrypt:
   certbot_www:
-  certosaur_data:
-  certosaur_certs:
+  certosaurus_data:
+  certosaurus_certs:

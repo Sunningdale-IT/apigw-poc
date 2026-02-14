@@ -1,5 +1,5 @@
 """
-URL configuration for Certosaur project.
+URL configuration for Certosaurus project.
 """
 
 from django.contrib import admin

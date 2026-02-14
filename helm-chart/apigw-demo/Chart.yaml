@@ -1,6 +1,6 @@
 apiVersion: v2
 name: apigw-demo
-description: Complete API Gateway POC Demo Suite - Dogcatcher, Kong Gateway, Model Citizen, Certosaur, and Keycloak
+description: Complete API Gateway POC Demo Suite - Dogcatcher, Kong Gateway, Model Citizen, Certosaurus, and Keycloak
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

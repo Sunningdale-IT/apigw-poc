@@ -11,7 +11,7 @@ python manage.py shell << 'EOF'
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@certosaur.local', 'admin123')
+    User.objects.create_superuser('admin', 'admin@certosaurus.local', 'admin123')
     print('🥚 Hatched admin user (username: admin, password: admin123)')
 else:
     print('🦴 Admin dino already exists')
@@ -22,5 +22,5 @@ echo "🌿 Gathering static files..."
 python manage.py collectstatic --noinput
 
 # Start the server
-echo "🌋 RAWR! Starting Certosaur..."
-exec gunicorn --bind 0.0.0.0:8000 --workers 2 certosaur_project.wsgi:application
+echo "🌋 RAWR! Starting Certosaurus..."
+exec gunicorn --bind 0.0.0.0:8000 --workers 2 certosaurus_project.wsgi:application

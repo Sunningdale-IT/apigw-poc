@@ -8,7 +8,7 @@ The demo suite consists of:
 - **Dogcatcher API** - Django REST API with multi-protocol authentication
 - **Kong Gateway** - API Gateway with OIDC, JWT, API Key, and mTLS support
 - **Model Citizen** - Consumer application demonstrating API usage
-- **Certosaur** - Certificate management portal
+- **Certosaurus** - Certificate management portal
 - **Keycloak** - Identity Provider for OIDC authentication
 - **PostgreSQL** - Two database instances (dogcatcher-db and kong-db)
 
@@ -45,8 +45,8 @@ docker build -t <your-registry>/kong-oidc:v1.0.0 ./kong
 # Build Model Citizen
 docker build -t <your-registry>/model-citizen:v1.0.0 ./citizen-app
 
-# Build Certosaur
-docker build -t <your-registry>/certosaur:v1.0.0 ./certosaur
+# Build Certosaurus
+docker build -t <your-registry>/certosaurus:v1.0.0 ./certosaurus
 ```
 
 ### 1.2 Push Images to Registry
@@ -59,7 +59,7 @@ docker login <your-registry>
 docker push <your-registry>/dogcatcher-api:v1.0.0
 docker push <your-registry>/kong-oidc:v1.0.0
 docker push <your-registry>/model-citizen:v1.0.0
-docker push <your-registry>/certosaur:v1.0.0
+docker push <your-registry>/certosaurus:v1.0.0
 ```
 
 **Note:** Replace `<your-registry>` with your actual registry URL (e.g., `myregistry.azurecr.io`)
@@ -134,9 +134,9 @@ citizen:
   env:
     secretKey: "generate-another-random-secret-key"
 
-certosaur:
+certosaurus:
   image:
-    repository: <your-registry>/certosaur
+    repository: <your-registry>/certosaurus
     tag: "v1.0.0"
   
   env:
@@ -300,7 +300,7 @@ curl -X POST $KONG_ADMIN_URL/consumers/citizen-app/key-auth \
 | **Kong Admin API** | https://kong-admin.jim00.pd.test-rig.nl | No auth required (OSS) |
 | **Kong Manager** | https://kong-manager.jim00.pd.test-rig.nl | No auth required (OSS) |
 | **Model Citizen** | https://citizen.jim00.pd.test-rig.nl | N/A |
-| **Certosaur** | https://certosaur.jim00.pd.test-rig.nl/login/ | Create on first visit |
+| **Certosaurus** | https://certosaurus.jim00.pd.test-rig.nl/login/ | Create on first visit |
 | **Keycloak** | https://keycloak.jim00.pd.test-rig.nl | admin / (from values) |
 
 ## Step 10: Test the API Gateway
@@ -477,7 +477,7 @@ For issues or questions:
             └─────────────┘ └────────────┘       │
                                                   │
             ┌─────────────┐ ┌────────────┐       │
-            │  Certosaur  │ │ Keycloak   │───────┘
+            │  Certosaurus  │ │ Keycloak   │───────┘
             │   (certs)   │ │   (OIDC)   │
             └─────────────┘ └────────────┘
 ```
@@ -487,7 +487,7 @@ For issues or questions:
 1. Configure Kong routes for different authentication methods
 2. Set up monitoring and logging
 3. Configure Keycloak realms and clients for OIDC
-4. Generate and manage certificates with Certosaur
+4. Generate and manage certificates with Certosaurus
 5. Test all authentication flows
 
 Enjoy your API Gateway POC Demo! 🚀

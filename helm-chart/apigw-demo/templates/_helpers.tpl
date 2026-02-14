@@ -155,11 +155,11 @@ app.kubernetes.io/component: citizen
 {{- end }}
 
 {{/*
-Certosaur labels
+Certosaurus labels
 */}}
-{{- define "apigw-demo.certosaur.labels" -}}
+{{- define "apigw-demo.certosaurus.labels" -}}
 helm.sh/chart: {{ include "apigw-demo.chart" . }}
-{{ include "apigw-demo.certosaur.selectorLabels" . }}
+{{ include "apigw-demo.certosaurus.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -167,10 +167,10 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/component: certificates
 {{- end }}
 
-{{- define "apigw-demo.certosaur.selectorLabels" -}}
+{{- define "apigw-demo.certosaurus.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "apigw-demo.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/component: certosaur
+app.kubernetes.io/component: certosaurus
 {{- end }}
 
 {{/*

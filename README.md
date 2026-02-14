@@ -14,7 +14,7 @@ A proof-of-concept demonstrating API Gateway patterns with a Django-based dog ca
         │                      │                        │
         ▼                      │                        ▼
 ┌─────────────────┐            │                ┌─────────────────┐
-│   Certosaur     │            │                │   PostgreSQL    │
+│   Certosaurus     │            │                │   PostgreSQL    │
 │ (Certificate    │            │                │    Server       │
 │  Management)    │            │                │  ┌───────────┐  │
 └─────────────────┘            │                │  │  kong db  │  │
@@ -65,7 +65,7 @@ Kong API Gateway provides 6 authentication methods via different URL paths:
 |-----------|-------------|-------------|-------------|
 | **Dogcatcher API** | 5001 | dogcatcher.* | Django REST Framework API with Swagger docs |
 | **Model Citizen App** | 5002 | citizen.* | Django citizen portal consuming API via Kong |
-| **Certosaur** | 8000 | certosaur.* | Certificate authority management portal |
+| **Certosaurus** | 8000 | certosaurus.* | Certificate authority management portal |
 | **Kong Gateway** | 8000 | kong.* | API Gateway with multi-protocol authentication |
 | **Kong Admin API** | 8001 | kong-admin.* | Kong configuration API |
 | **Kong Manager** | 8002 | kong-manager.* | Kong web admin interface |
@@ -78,7 +78,7 @@ Kong API Gateway provides 6 authentication methods via different URL paths:
 - **Multi-protocol authentication**: Plain, API Key, JWT, mTLS, OIDC
 - **Kong API Gateway** with OIDC plugin for OpenID Connect
 - **Keycloak Identity Provider** for OIDC authentication
-- **Certosaur Certificate Management** - Web-based CA for generating server and client certificates
+- **Certosaurus Certificate Management** - Web-based CA for generating server and client certificates
 - **Health Endpoints** - All applications expose `/health/` for Kubernetes probes
 - **Kubernetes-native deployment** with Helm charts
 - **Auto-generated TLS certificates** via cert-manager and Let's Encrypt
@@ -117,12 +117,12 @@ cd helm-chart/apigw-demo
 # Build images (if needed)
 docker build --platform linux/amd64 -t <your-registry>/dogcatcher:latest -f ../../app/Dockerfile ../../app
 docker build --platform linux/amd64 -t <your-registry>/citizen:latest -f ../../citizen-app/Dockerfile ../../citizen-app
-docker build --platform linux/amd64 -t <your-registry>/certosaur:latest -f ../../certosaur/Dockerfile ../../certosaur
+docker build --platform linux/amd64 -t <your-registry>/certosaurus:latest -f ../../certosaurus/Dockerfile ../../certosaurus
 
 # Push to registry
 docker push <your-registry>/dogcatcher:latest
 docker push <your-registry>/citizen:latest
-docker push <your-registry>/certosaur:latest
+docker push <your-registry>/certosaurus:latest
 
 # 3. Configure your deployment
 cp values.yaml my-values.yaml
@@ -150,7 +150,7 @@ kubectl get ingress,certificates -n apigw-demo
 The Helm chart (`helm-chart/apigw-demo/`) includes:
 
 - **Unified PostgreSQL StatefulSet** - Single database server with 3 databases (kong, dogcatcher, keycloak)
-- **7 Application Deployments** - Dogcatcher (2 replicas), Kong (2 replicas), Citizen (2 replicas), Certosaur, Keycloak
+- **7 Application Deployments** - Dogcatcher (2 replicas), Kong (2 replicas), Citizen (2 replicas), Certosaurus, Keycloak
 - **Health Checks** - All apps have liveness and readiness probes using `/health/` endpoints
 - **TLS Ingresses** - Automatic certificate generation via cert-manager
 - **PersistentVolumes** - For database data, uploads, and certificates
@@ -203,7 +203,7 @@ After deployment, applications are available at:
 - **Dogcatcher API**: https://dogcatcher.{your-domain}/api/docs/
 - **Dogcatcher Admin**: https://dogcatcher.{your-domain}/admin/
 - **Model Citizen**: https://citizen.{your-domain}/
-- **Certosaur**: https://certosaur.{your-domain}/login/
+- **Certosaurus**: https://certosaurus.{your-domain}/login/
 - **Kong Proxy**: https://kong.{your-domain}/
 - **Kong Admin**: https://kong-admin.{your-domain}/
 - **Kong Manager**: https://kong-manager.{your-domain}/
@@ -420,9 +420,9 @@ Access the interactive API documentation at http://localhost:5001/api/docs/
 │   ├── static/images/                # Static images
 │   ├── Dockerfile                    # Multi-stage optimized build
 │   └── requirements.txt
-├── certosaur/                        # Certificate Management Portal
+├── certosaurus/                        # Certificate Management Portal
 │   ├── manage.py                     # Django management script
-│   ├── certosaur_project/            # Django project configuration
+│   ├── certosaurus_project/            # Django project configuration
 │   ├── certificates/                 # Certificates Django app
 │   │   ├── views.py                  # Includes /health/ endpoint
 │   │   ├── cert_utils.py             # Certificate generation utilities
@@ -439,7 +439,7 @@ Access the interactive API documentation at http://localhost:5001/api/docs/
 │       │   ├── dogcatcher-deployment.yaml     # API deployment
 │       │   ├── kong-deployment.yaml           # Kong gateway
 │       │   ├── citizen-deployment.yaml        # Citizen app
-│       │   ├── certosaur-deployment.yaml      # Cert management
+│       │   ├── certosaurus-deployment.yaml      # Cert management
 │       │   ├── keycloak-deployment.yaml       # Identity provider
 │       │   ├── kong-migrations-job.yaml       # DB init job
 │       │   ├── secrets.yaml                   # All secrets
@@ -704,7 +704,7 @@ See the script help for all options:
 ⚠️ **This is a proof-of-concept application.** For production:
 
 1. **Change all default secrets** - Generate strong random keys for:
-   - Django SECRET_KEY (Dogcatcher, Citizen, Certosaur)
+   - Django SECRET_KEY (Dogcatcher, Citizen, Certosaurus)
    - PostgreSQL passwords (postgres master, kong, dogcatcher, keycloak)
    - Keycloak admin password
    - Kong admin tokens
