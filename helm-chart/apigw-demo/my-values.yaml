@@ -60,17 +60,17 @@ citizen:
   ingress:
     host: citizen.jim00.pd.test-rig.nl
 
-certosaur:
+certosaurus:
   enabled: true
   replicaCount: 1
   
   image:
-    repository: docker.io/jimleitch/certosaur
+    repository: docker.io/jimleitch/certosaurus
     pullPolicy: IfNotPresent
     tag: "latest"
   
   ingress:
-    host: certosaur.jim00.pd.test-rig.nl
+    host: certosaurus.jim00.pd.test-rig.nl
 
 keycloak:
   enabled: true

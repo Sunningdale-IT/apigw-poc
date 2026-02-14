@@ -37,8 +37,8 @@ To view all resources:
   Model Citizen:      https://{{ .Values.citizen.ingress.host }}/
 {{- end }}
 
-{{- if .Values.certosaur.ingress.enabled }}
-  Certosaur:          https://{{ .Values.certosaur.ingress.host }}/login/
+{{- if .Values.certosaurus.ingress.enabled }}
+  Certosaurus:          https://{{ .Values.certosaurus.ingress.host }}/login/
 {{- end }}
 
 {{- if .Values.keycloak.ingress.enabled }}

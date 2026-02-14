@@ -1,19 +1,19 @@
-{{- if .Values.certosaur.enabled }}
+{{- if .Values.certosaurus.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "apigw-demo.fullname" . }}-certosaur
+  name: {{ include "apigw-demo.fullname" . }}-certosaurus
   labels:
-    {{- include "apigw-demo.certosaur.labels" . | nindent 4 }}
+    {{- include "apigw-demo.certosaurus.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.certosaur.replicaCount }}
+  replicas: {{ .Values.certosaurus.replicaCount }}
   selector:
     matchLabels:
-      {{- include "apigw-demo.certosaur.selectorLabels" . | nindent 6 }}
+      {{- include "apigw-demo.certosaurus.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "apigw-demo.certosaur.selectorLabels" . | nindent 8 }}
+        {{- include "apigw-demo.certosaurus.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -23,25 +23,25 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-      - name: certosaur
+      - name: certosaurus
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
-        image: "{{ .Values.certosaur.image.repository }}:{{ .Values.certosaur.image.tag }}"
-        imagePullPolicy: {{ .Values.certosaur.image.pullPolicy }}
+        image: "{{ .Values.certosaurus.image.repository }}:{{ .Values.certosaurus.image.tag }}"
+        imagePullPolicy: {{ .Values.certosaurus.image.pullPolicy }}
         ports:
         - name: http
-          containerPort: {{ .Values.certosaur.service.targetPort }}
+          containerPort: {{ .Values.certosaurus.service.targetPort }}
           protocol: TCP
         env:
         - name: DJANGO_SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: {{ include "apigw-demo.fullname" . }}-certosaur-secret
+              name: {{ include "apigw-demo.fullname" . }}-certosaurus-secret
               key: secret-key
         - name: DJANGO_DEBUG
-          value: {{ .Values.certosaur.env.djangoDebug | quote }}
+          value: {{ .Values.certosaurus.env.djangoDebug | quote }}
         - name: DJANGO_ALLOWED_HOSTS
-          value: {{ .Values.certosaur.env.allowedHosts | quote }}
+          value: {{ .Values.certosaurus.env.allowedHosts | quote }}
         volumeMounts:
         - name: data
           mountPath: /app/data
@@ -64,19 +64,19 @@ spec:
           timeoutSeconds: 3
           failureThreshold: 3
         resources:
-          {{- toYaml .Values.certosaur.resources | nindent 10 }}
+          {{- toYaml .Values.certosaurus.resources | nindent 10 }}
       volumes:
       - name: data
-        {{- if .Values.certosaur.persistence.data.enabled }}
+        {{- if .Values.certosaurus.persistence.data.enabled }}
         persistentVolumeClaim:
-          claimName: {{ include "apigw-demo.fullname" . }}-certosaur-data
+          claimName: {{ include "apigw-demo.fullname" . }}-certosaurus-data
         {{- else }}
         emptyDir: {}
         {{- end }}
       - name: certs
-        {{- if .Values.certosaur.persistence.certs.enabled }}
+        {{- if .Values.certosaurus.persistence.certs.enabled }}
         persistentVolumeClaim:
-          claimName: {{ include "apigw-demo.fullname" . }}-certosaur-certs
+          claimName: {{ include "apigw-demo.fullname" . }}-certosaurus-certs
         {{- else }}
         emptyDir: {}
         {{- end }}
@@ -96,16 +96,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "apigw-demo.fullname" . }}-certosaur
+  name: {{ include "apigw-demo.fullname" . }}-certosaurus
   labels:
-    {{- include "apigw-demo.certosaur.labels" . | nindent 4 }}
+    {{- include "apigw-demo.certosaurus.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.certosaur.service.type }}
+  type: {{ .Values.certosaurus.service.type }}
   ports:
-    - port: {{ .Values.certosaur.service.port }}
+    - port: {{ .Values.certosaurus.service.port }}
       targetPort: http
       protocol: TCP
       name: http
   selector:
-    {{- include "apigw-demo.certosaur.selectorLabels" . | nindent 4 }}
+    {{- include "apigw-demo.certosaurus.selectorLabels" . | nindent 4 }}
 {{- end }}

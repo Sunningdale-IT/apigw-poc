@@ -1,0 +1,31 @@
+{{- if and .Values.certosaurus.enabled .Values.certosaurus.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-certosaurus
+  labels:
+    {{- include "apigw-demo.certosaurus.labels" . | nindent 4 }}
+  {{- with .Values.certosaurus.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.certosaurus.ingress.className }}
+  {{- if .Values.certosaurus.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.certosaurus.ingress.host }}
+      secretName: {{ .Values.certosaurus.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.certosaurus.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" . }}-certosaurus
+                port:
+                  number: {{ .Values.certosaurus.service.port }}
+{{- end }}

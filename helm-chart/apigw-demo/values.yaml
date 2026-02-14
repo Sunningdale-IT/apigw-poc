@@ -207,12 +207,12 @@ citizen:
       memory: 256Mi
 
 # Certosaur - Certificate Management Portal
-certosaur:
+certosaurus:
   enabled: true
   replicaCount: 1
   
   image:
-    repository: docker.io/jimleitch/certosaur
+    repository: docker.io/jimleitch/certosaurus
     pullPolicy: IfNotPresent
     tag: "latest"
   
@@ -226,15 +226,15 @@ certosaur:
     className: traefik
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
-    host: certosaur.jim00.pd.test-rig.nl
+    host: certosaurus.jim00.pd.test-rig.nl
     tls:
       enabled: true
-      secretName: certosaur-tls
+      secretName: certosaurus-tls
   
   env:
     djangoDebug: "false"
-    secretKey: "certosaur-secret-change-in-production"
-    allowedHosts: "certosaur.jim00.pd.test-rig.nl,certosaur,localhost,*"
+    secretKey: "certosaurus-secret-change-in-production"
+    allowedHosts: "certosaurus.jim00.pd.test-rig.nl,certosaurus,localhost,*"
   
   persistence:
     data:
