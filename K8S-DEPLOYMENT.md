@@ -63,7 +63,7 @@ TAG="v1.0.0"
 docker build -t $REGISTRY/dogcatcher-api:$TAG ./app
 docker build -t $REGISTRY/kong-oidc:$TAG ./kong
 docker build -t $REGISTRY/model-citizen:$TAG ./citizen-app
-docker build -t $REGISTRY/certosaurus:$TAG ./certosaur
+docker build -t $REGISTRY/certosaurus:$TAG ./certosaurus
 
 # Push images
 docker push $REGISTRY/dogcatcher-api:$TAG

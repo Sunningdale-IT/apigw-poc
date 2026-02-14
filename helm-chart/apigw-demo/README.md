@@ -9,7 +9,7 @@ Complete Helm chart for deploying the API Gateway POC demo suite to Kubernetes.
 docker build -t your-registry/dogcatcher-api:v1.0.0 ../../app
 docker build -t your-registry/kong-oidc:v1.0.0 ../../kong
 docker build -t your-registry/model-citizen:v1.0.0 ../../citizen-app
-docker build -t your-registry/certosaurus:v1.0.0 ../../certosaur
+docker build -t your-registry/certosaurus:v1.0.0 ../../certosaurus
 
 # 2. Create custom values file
 cp values-example.yaml my-values.yaml
