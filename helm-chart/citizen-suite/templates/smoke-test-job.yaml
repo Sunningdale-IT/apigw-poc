@@ -1,0 +1,135 @@
+{{- if .Values.tests.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: smoke-tests
+  annotations:
+    # Runs automatically after every install/upgrade AND via `helm test`
+    "helm.sh/hook": post-install,post-upgrade,test
+    # Weight 20: runs after apisix-config-job (weight 15), giving routes time to settle
+    "helm.sh/hook-weight": "20"
+    # Delete stale jobs before creating a new one; keep completed jobs so
+    # `helm test --logs` can read their output after the fact
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-kong
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - >
+              echo "Waiting for Kong proxy...";
+              until nc -z {{ .Values.tests.kongProxyService }}.{{ .Release.Namespace }}.svc.cluster.local
+              {{ .Values.tests.kongProxyPort }}; do sleep 3; done;
+              echo "Kong proxy ready."; sleep 5
+      containers:
+        - name: smoke-tests
+          image: {{ .Values.tests.image }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache curl jq >/dev/null 2>&1
+
+              KONG="http://{{ .Values.tests.kongProxyService }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.tests.kongProxyPort }}"
+              PASS=0
+              FAIL=0
+
+              run_test() {
+                DESC="$1"
+                EXPECTED="$2"
+                CHECK="$3"
+                shift 3
+                printf "\n  Test: %s\n" "$DESC"
+                RESPONSE=$(curl -s -w '\n%{http_code}' "$@")
+                STATUS=$(printf '%s' "$RESPONSE" | tail -n1)
+                BODY=$(printf '%s' "$RESPONSE" | sed '$d')
+                if [ "$STATUS" != "$EXPECTED" ]; then
+                  printf "  FAIL — expected HTTP %s, got %s\n" "$EXPECTED" "$STATUS"
+                  printf '         Body: %.300s\n' "$BODY"
+                  FAIL=$((FAIL+1))
+                  return
+                fi
+                if [ -n "$CHECK" ]; then
+                  RESULT=$(printf '%s' "$BODY" | jq -r "$CHECK" 2>/dev/null || printf 'false')
+                  if [ "$RESULT" != "true" ]; then
+                    printf "  FAIL — HTTP %s OK but body check failed: %s\n" "$STATUS" "$CHECK"
+                    printf '         Body: %.300s\n' "$BODY"
+                    FAIL=$((FAIL+1))
+                    return
+                  fi
+                fi
+                printf "  PASS — HTTP %s\n" "$STATUS"
+                PASS=$((PASS+1))
+              }
+
+              # ── Good Behaviour — Criminal Record Checks ─────────────────────
+              # Route: /good-behaviour (strip_path=true) → good-behaviour:5443/api/citizens
+              printf "\n━━━ Good Behaviour — Criminal Record Checks ━━━\n"
+              GB="${KONG}/good-behaviour"
+
+              run_test \
+                "Happy — CIT001 returns citizen data (200)" \
+                "200" \
+                '(.citizen_id == "CIT001") and (.first_name != null)' \
+                "${GB}/check/CIT001/"
+
+              run_test \
+                "Unhappy — unknown citizen returns JSON 404" \
+                "404" \
+                '.found == false' \
+                "${GB}/check/NOSUCHCITIZEN/"
+
+              # ── Dogcatcher — Lost Dog API ────────────────────────────────────
+              printf "\n━━━ Dogcatcher — Lost Dog API ━━━\n"
+              DOGS="${KONG}/dogcatcher/dogs"
+
+              run_test \
+                "Happy — dog list returns JSON array (200)" \
+                "200" \
+                'type == "array"' \
+                "${DOGS}/"
+
+              run_test \
+                "Unhappy — non-existent dog ID returns 404" \
+                "404" \
+                "" \
+                "${DOGS}/999999999/"
+
+              # ── Dog photo ───────────────────────────────────────────────────
+              printf "\n  Test: Photo — first dog with a photo returns image/* (200)\n"
+              LIST=$(curl -s "${DOGS}/")
+              DOG_ID=$(printf '%s' "$LIST" | jq -r 'map(select(.photo_filename)) | first | .id // empty')
+              if [ -z "$DOG_ID" ]; then
+                printf "  SKIP — no dogs with photos found (populate_test_data not yet run)\n"
+              else
+                PHOTO_CT=$(curl -s -o /dev/null -w '%{content_type}' "${DOGS}/${DOG_ID}/photo/")
+                case "$PHOTO_CT" in
+                  image/*)
+                    printf "  PASS — HTTP 200, Content-Type: %s\n" "$PHOTO_CT"
+                    PASS=$((PASS+1))
+                    ;;
+                  *)
+                    printf "  FAIL — expected image/*, got: '%s'\n" "$PHOTO_CT"
+                    FAIL=$((FAIL+1))
+                    ;;
+                esac
+              fi
+
+              # ── Summary ─────────────────────────────────────────────────────
+              TOTAL=$((PASS+FAIL))
+              printf "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+              if [ "$FAIL" -eq 0 ]; then
+                printf "  All %d tests passed.\n" "$TOTAL"
+              else
+                printf "  %d of %d tests FAILED.\n" "$FAIL" "$TOTAL"
+                exit 1
+              fi
+              printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+{{- end }}
