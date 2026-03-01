@@ -104,9 +104,9 @@ The `APIKeyPermission` class checks in order:
 
 ### Good Behaviour mTLS Mode
 
-When `MTLS_ENABLED=true`, the container runs two gunicorn processes:
+Good Behaviour models a 3rd-party API that enforces mTLS. When `MTLS_ENABLED=true`, the container runs two gunicorn processes:
 - Port 5443: HTTPS with mTLS (`--cert-reqs 2` = require client cert)
-- Port 5000: Plain HTTP (Kubernetes health probes only)
+- Port 5000: Plain HTTP for Kubernetes liveness/readiness probes (HTTP probes can't do mTLS)
 
 Kong acts as the mTLS client, presenting its client certificate when calling Good Behaviour.
 
