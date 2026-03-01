@@ -12,11 +12,23 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-# API Gateway URL - points to Kong which proxies to Dogcatcher
-# Use /public route for unauthenticated access, /apikey for authenticated
-API_GATEWAY_URL = os.environ.get('API_GATEWAY_URL', 'http://kong:8000/public')
+# CSRF trusted origins for HTTPS
+csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins.split(',') if origin.strip()]
+
+API_GATEWAY_URL = os.environ.get('API_GATEWAY_URL', 'http://dogcatcher:5000/api')
 DOGCATCHER_PUBLIC_URL = os.environ.get('DOGCATCHER_PUBLIC_URL', 'http://localhost:8000')
 DOGCATCHER_API_KEY = os.environ.get('DOGCATCHER_API_KEY', '')
+
+# New service URLs
+MOVIEZZZ_URL = os.environ.get('MOVIEZZZ_URL', 'https://moviezzz.jim00.pd.test-rig.nl')
+FREE_PARKING_URL = os.environ.get('FREE_PARKING_URL', 'https://free-parking.jim00.pd.test-rig.nl')
+PARK_RUNS_URL = os.environ.get('PARK_RUNS_URL', 'https://park-runs.jim00.pd.test-rig.nl')
+
+# Good Behaviour check is routed through Kong (plain HTTP/HTTPS to Kong,
+# Kong then uses mTLS to reach the good-behaviour backend).
+# GOOD_BEHAVIOUR_URL points at the Kong route for good behaviour checks.
+GOOD_BEHAVIOUR_URL = os.environ.get('GOOD_BEHAVIOUR_URL', 'http://apigw-demo-kong-proxy:8000/good-behaviour')
 
 # Mock citizen database
 MOCK_CITIZENS = {

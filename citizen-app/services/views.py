@@ -2,12 +2,32 @@
 Views for the Model Citizen application.
 """
 import datetime
+import re
 import requests
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.conf import settingsfrom django.http import JsonResponse
+from django.conf import settings
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .decorators import login_required
+
+
+def _rewrite_photo_urls(dog):
+    """
+    Replace any internal cluster hostname in photo URLs with the public
+    DOGCATCHER_PUBLIC_URL so browsers can fetch the images.
+
+    The dogcatcher serializer builds URLs from the Host header it receives,
+    which is the internal Kong service name when called pod-to-pod.  We swap
+    that out for the externally reachable hostname here.
+    """
+    public_base = settings.DOGCATCHER_PUBLIC_URL.rstrip('/')
+    for field in ('photo_url', 'photo_download_url'):
+        url = dog.get(field)
+        if url:
+            # Replace everything up to (but not including) the path component
+            dog[field] = re.sub(r'^https?://[^/]+', public_base, url)
+    return dog
 
 
 @csrf_exempt
@@ -162,7 +182,7 @@ def found_dogs(request):
         
         response = requests.get(f'{settings.API_GATEWAY_URL}/dogs/', headers=headers, timeout=5)
         response.raise_for_status()
-        dogs = response.json()
+        dogs = [_rewrite_photo_urls(d) for d in response.json()]
     except requests.exceptions.ConnectionError:
         error = 'Unable to connect to the Dog Pound database. Please try again later.'
     except requests.exceptions.Timeout:
@@ -174,7 +194,8 @@ def found_dogs(request):
         'citizen': citizen,
         'dogs': dogs,
         'error': error,
-        'dogcatcher_url': settings.DOGCATCHER_PUBLIC_URL
+        'dogcatcher_url': settings.DOGCATCHER_PUBLIC_URL,
+        'api_endpoint': f'{settings.API_GATEWAY_URL}/dogs/'
     })
 
 
@@ -192,7 +213,7 @@ def found_dog_detail(request, dog_id):
         
         response = requests.get(f'{settings.API_GATEWAY_URL}/dogs/{dog_id}/', headers=headers, timeout=5)
         response.raise_for_status()
-        dog = response.json()
+        dog = _rewrite_photo_urls(response.json())
     except requests.exceptions.RequestException as e:
         error = f'Error retrieving dog details: {str(e)}'
     
@@ -202,3 +223,141 @@ def found_dog_detail(request, dog_id):
         'error': error,
         'dogcatcher_url': settings.DOGCATCHER_PUBLIC_URL
     })
+
+
+@login_required
+def movies_view(request):
+    """Movies showing at local cinemas."""
+    citizen = get_citizen_info(request)
+    movies = []
+    error = None
+    
+    try:
+        response = requests.get(f'{settings.MOVIEZZZ_URL}/api/movies/', timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        movies = data.get('results', data) if isinstance(data, dict) else data
+    except requests.exceptions.ConnectionError:
+        error = 'Unable to connect to the movies database. Please try again later.'
+    except requests.exceptions.Timeout:
+        error = 'The movies database is taking too long to respond. Please try again later.'
+    except requests.exceptions.RequestException as e:
+        error = f'Error retrieving movies: {str(e)}'
+    
+    return render(request, 'movies.html', {
+        'citizen': citizen,
+        'movies': movies,
+        'error': error,
+        'moviezzz_url': settings.MOVIEZZZ_URL
+    })
+
+
+@login_required
+def parking_view(request):
+    """Available parking spots in the city."""
+    citizen = get_citizen_info(request)
+    spots = []
+    error = None
+    
+    try:
+        # Only show available spots
+        response = requests.get(f'{settings.FREE_PARKING_URL}/api/spots/?available=true', timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        spots = data.get('results', data) if isinstance(data, dict) else data
+    except requests.exceptions.ConnectionError:
+        error = 'Unable to connect to the parking database. Please try again later.'
+    except requests.exceptions.Timeout:
+        error = 'The parking database is taking too long to respond. Please try again later.'
+    except requests.exceptions.RequestException as e:
+        error = f'Error retrieving parking spots: {str(e)}'
+    
+    return render(request, 'parking.html', {
+        'citizen': citizen,
+        'spots': spots,
+        'error': error,
+        'parking_url': settings.FREE_PARKING_URL
+    })
+
+
+@login_required
+def good_behaviour_view(request):
+    """Search for a citizen's good behaviour record by ID."""
+    citizen = get_citizen_info(request)
+    citizen_data = None
+    error = None
+    error_title = None
+    searched_id = None
+
+    # Get citizen ID from POST or GET parameter
+    if request.method == 'POST':
+        searched_id = request.POST.get('citizen_id', '').strip().upper()
+    else:
+        searched_id = request.GET.get('citizen_id', '').strip().upper()
+
+    # If a citizen ID was provided, look it up
+    if searched_id:
+        try:
+            records_base = settings.GOOD_BEHAVIOUR_URL.rstrip('/')
+            # Support both direct service URLs (..../api/citizens) and
+            # gateway route URLs (..../good-behaviour) without double-prefixing.
+            if records_base.endswith('/api/citizens') or records_base.endswith('/good-behaviour'):
+                check_url = f'{records_base}/check/{searched_id}/'
+            else:
+                check_url = f'{records_base}/api/citizens/check/{searched_id}/'
+            response = requests.get(check_url, timeout=5)
+            response.raise_for_status()
+            citizen_data = response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                error_title = 'Not Found'
+                error = f'No citizen found with ID: {searched_id}. Try CIT001, CIT002, CIT003, or CIT-2001.'
+            else:
+                error_title = 'Service Error'
+                error = f'Error checking Good Behaviour record: {str(e)}'
+        except requests.exceptions.ConnectionError:
+            error_title = 'Connection Issue'
+            error = 'Unable to connect to the Good Behaviour service. Please try again later.'
+        except requests.exceptions.Timeout:
+            error_title = 'Timeout'
+            error = 'The Good Behaviour service is taking too long to respond. Please try again later.'
+        except requests.exceptions.RequestException as e:
+            error_title = 'Service Error'
+            error = f'Error retrieving Good Behaviour records: {str(e)}'
+
+    return render(request, 'good_behaviour.html', {
+        'citizen': citizen,
+        'citizen_data': citizen_data,
+        'searched_id': searched_id,
+        'error': error,
+        'error_title': error_title,
+        'records_url': settings.GOOD_BEHAVIOUR_URL
+    })
+
+
+@login_required
+def park_runs_view(request):
+    """Saturday park run events."""
+    citizen = get_citizen_info(request)
+    park_runs = []
+    error = None
+    
+    try:
+        response = requests.get(f'{settings.PARK_RUNS_URL}/api/parkruns/', timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        park_runs = data.get('results', data) if isinstance(data, dict) else data
+    except requests.exceptions.ConnectionError:
+        error = 'Unable to connect to the park runs database. Please try again later.'
+    except requests.exceptions.Timeout:
+        error = 'The park runs database is taking too long to respond. Please try again later.'
+    except requests.exceptions.RequestException as e:
+        error = f'Error retrieving park runs: {str(e)}'
+    
+    return render(request, 'park_runs.html', {
+        'citizen': citizen,
+        'park_runs': park_runs,
+        'error': error,
+        'park_runs_url': settings.PARK_RUNS_URL
+    })
+

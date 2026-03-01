@@ -69,9 +69,9 @@ spec:
                 PASS=$((PASS+1))
               }
 
-              # ── Good Behaviour — Criminal Record Checks ─────────────────────
+              # ── Good Behaviour ───────────────────────────────────────────────
               # Route: /good-behaviour (strip_path=true) → good-behaviour:5443/api/citizens
-              printf "\n━━━ Good Behaviour — Criminal Record Checks ━━━\n"
+              printf "\n━━━ Good Behaviour ━━━\n"
               GB="${KONG}/good-behaviour"
 
               run_test \

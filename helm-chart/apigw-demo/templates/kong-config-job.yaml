@@ -1,0 +1,337 @@
+{{- if and .Values.kong.enabled .Values.dogcatcher.enabled }}
+{{- $fullName := include "apigw-demo.fullname" . }}
+{{- $ns := .Release.Namespace }}
+{{- $adminSvc := printf "http://%s-kong-admin.%s.svc.cluster.local:8001" $fullName $ns }}
+{{- $dogcatcherSvc := printf "http://%s-dogcatcher.%s.svc.cluster.local:%d/api" $fullName $ns (int .Values.dogcatcher.service.targetPort) }}
+{{- $serviceUrl := .Values.kong.dogcatcherConfig.serviceUrl | default $dogcatcherSvc }}
+{{- $gbMtlsEnabled := and .Values.goodbehaviour.enabled .Values.goodbehaviour.mtls.enabled }}
+{{- $gbSvc := printf "https://%s-goodbehaviour.%s.svc.cluster.local:5443" $fullName $ns }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullName }}-kong-config-{{ .Release.Revision }}
+  labels:
+    {{- include "apigw-demo.kong.labels" . | nindent 4 }}
+  annotations:
+    # Run after every install and upgrade, then clean up automatically
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-kong-config
+    spec:
+      restartPolicy: OnFailure
+      {{- if $gbMtlsEnabled }}
+      volumes:
+      - name: good-behaviour-mtls-certs
+        secret:
+          secretName: {{ $fullName }}-good-behaviour-mtls
+          items:
+          - key: ca.crt
+            path: ca.crt
+          - key: client.crt
+            path: client.crt
+          - key: client.key
+            path: client.key
+      {{- end }}
+      initContainers:
+      - name: wait-for-kong
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for Kong Admin API..."
+          until nc -z {{ $fullName }}-kong-admin.{{ $ns }}.svc.cluster.local 8001; do
+            echo "Kong not ready, retrying in 5s..."
+            sleep 5
+          done
+          echo "Kong Admin API is reachable, waiting for it to be ready..."
+          sleep 10
+      containers:
+      - name: kong-config
+        image: curlimages/curl:8.5.0
+        {{- if $gbMtlsEnabled }}
+        volumeMounts:
+        - name: good-behaviour-mtls-certs
+          mountPath: /etc/kong-config/mtls
+          readOnly: true
+        {{- end }}
+        env:
+        - name: KONG_ADMIN
+          value: {{ $adminSvc | quote }}
+        - name: SERVICE_NAME
+          value: {{ .Values.kong.dogcatcherConfig.serviceName | quote }}
+        - name: SERVICE_URL
+          value: {{ $serviceUrl | quote }}
+        - name: INJECT_ROUTE
+          value: {{ .Values.kong.dogcatcherConfig.injectRouteName | quote }}
+        - name: INJECT_PATH
+          value: {{ .Values.kong.dogcatcherConfig.injectRoutePath | quote }}
+        - name: API_ROUTE
+          value: {{ .Values.kong.dogcatcherConfig.apiRouteName | quote }}
+        - name: API_PATH
+          value: {{ .Values.kong.dogcatcherConfig.apiRoutePath | quote }}
+        - name: STATIC_ROUTE
+          value: {{ .Values.kong.dogcatcherConfig.staticRouteName | quote }}
+        - name: STATIC_PATH
+          value: {{ .Values.kong.dogcatcherConfig.staticRoutePath | quote }}
+        - name: DOGCATCHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ $fullName }}-dogcatcher-secret
+              key: api-keys
+        {{- if $gbMtlsEnabled }}
+        - name: GB_MTLS_ENABLED
+          value: "true"
+        - name: GB_SERVICE_NAME
+          value: {{ .Values.kong.goodbehaviourConfig.serviceName | quote }}
+        - name: GB_SERVICE_URL
+          value: {{ $gbSvc | quote }}
+        - name: GB_ROUTE_NAME
+          value: {{ .Values.kong.goodbehaviourConfig.routeName | quote }}
+        - name: GB_ROUTE_PATH
+          value: {{ .Values.kong.goodbehaviourConfig.routePath | quote }}
+        - name: GB_CLIENT_CERT_TAG
+          value: {{ .Values.kong.goodbehaviourConfig.clientCertTag | quote }}
+        - name: GB_MTLS_CA_FILE
+          value: "/etc/kong-config/mtls/ca.crt"
+        - name: GB_MTLS_CLIENT_CERT_FILE
+          value: "/etc/kong-config/mtls/client.crt"
+        - name: GB_MTLS_CLIENT_KEY_FILE
+          value: "/etc/kong-config/mtls/client.key"
+        {{- else }}
+        - name: GB_MTLS_ENABLED
+          value: "false"
+        {{- end }}
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+
+          echo "=== Kong Config Job ==="
+          echo "Admin API: ${KONG_ADMIN}"
+
+          # -------------------------------------------------------
+          # Helper functions
+          # -------------------------------------------------------
+
+          upsert_service() {
+            SVC_NAME="${1}"
+            SVC_URL="${2}"
+            echo "--- Upserting service: ${SVC_NAME} -> ${SVC_URL}"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KONG_ADMIN}/services/${SVC_NAME}")
+            if [ "${STATUS}" = "200" ]; then
+              echo "  Service already exists, updating URL..."
+              curl -s -X PATCH "${KONG_ADMIN}/services/${SVC_NAME}" \
+                -d "url=${SVC_URL}" > /dev/null
+            else
+              echo "  Creating service..."
+              curl -s -X POST "${KONG_ADMIN}/services" \
+                -d "name=${SVC_NAME}" \
+                -d "url=${SVC_URL}" > /dev/null
+            fi
+          }
+
+          upsert_route() {
+            SVC_NAME="${1}"
+            ROUTE_NAME="${2}"
+            ROUTE_PATH="${3}"
+            STRIP="${4:-true}"
+            echo "--- Upserting route: ${ROUTE_NAME} (${ROUTE_PATH}, strip_path=${STRIP}) on ${SVC_NAME}"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KONG_ADMIN}/routes/${ROUTE_NAME}")
+            if [ "${STATUS}" = "200" ]; then
+              echo "  Route already exists, skipping."
+            else
+              echo "  Creating route..."
+              curl -s -X POST "${KONG_ADMIN}/services/${SVC_NAME}/routes" \
+                -d "name=${ROUTE_NAME}" \
+                -d "paths[]=${ROUTE_PATH}" \
+                -d "strip_path=${STRIP}" > /dev/null
+            fi
+          }
+
+          upsert_plugin() {
+            ROUTE_NAME="${1}"
+            echo "--- Upserting request-transformer plugin on route: ${ROUTE_NAME}"
+            EXISTING=$(curl -s "${KONG_ADMIN}/routes/${ROUTE_NAME}/plugins" | grep -c '"name":"request-transformer"' || true)
+            if [ "${EXISTING}" -gt "0" ]; then
+              echo "  Plugin already exists, updating headers..."
+              PLUGIN_ID=$(curl -s "${KONG_ADMIN}/routes/${ROUTE_NAME}/plugins" \
+                | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+              curl -s -X PUT "${KONG_ADMIN}/plugins/${PLUGIN_ID}" \
+                -H "Content-Type: application/json" \
+                -d "{\"name\":\"request-transformer\",\"config\":{\"add\":{\"headers\":[\"X-API-Key:${DOGCATCHER_API_KEY}\",\"X-Auth-Mode:inject\",\"X-Auth-Verified:true\"]}}}" \
+                > /dev/null
+            else
+              echo "  Creating plugin..."
+              curl -s -X POST "${KONG_ADMIN}/routes/${ROUTE_NAME}/plugins" \
+                -d "name=request-transformer" \
+                -d "config.add.headers[]=X-API-Key:${DOGCATCHER_API_KEY}" \
+                -d "config.add.headers[]=X-Auth-Mode:inject" \
+                -d "config.add.headers[]=X-Auth-Verified:true" \
+                > /dev/null
+            fi
+          }
+
+          # Register a CA cert in Kong; returns the Kong CA cert ID via stdout.
+          # Idempotent: if a cert with the same PEM already exists it returns the existing ID.
+          register_ca_cert() {
+            CA_FILE="${1}"
+            CA_PEM=$(cat "${CA_FILE}")
+            echo "--- Registering CA certificate from ${CA_FILE}" >&2
+
+            # Check if this exact CA cert is already registered by comparing PEM content
+            EXISTING_ID=$(curl -s "${KONG_ADMIN}/ca_certificates" \
+              | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+
+            if [ -n "${EXISTING_ID}" ]; then
+              # Verify it is the same cert
+              EXISTING_PEM=$(curl -s "${KONG_ADMIN}/ca_certificates/${EXISTING_ID}" \
+                | grep -o '"cert":"[^"]*"' | cut -d'"' -f4 | sed 's/\\n/\n/g' || true)
+              STRIPPED_EXISTING=$(echo "${EXISTING_PEM}" | tr -d ' \n')
+              STRIPPED_NEW=$(echo "${CA_PEM}" | tr -d ' \n')
+              if [ "${STRIPPED_EXISTING}" = "${STRIPPED_NEW}" ]; then
+                echo "  CA cert already registered (id=${EXISTING_ID}), reusing." >&2
+                echo "${EXISTING_ID}"
+                return
+              fi
+            fi
+
+            echo "  Uploading CA cert..." >&2
+            RESPONSE=$(curl -s -X POST "${KONG_ADMIN}/ca_certificates" \
+              --data-urlencode "cert=${CA_PEM}")
+            CA_ID=$(echo "${RESPONSE}" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+            echo "  CA cert registered (id=${CA_ID})" >&2
+            echo "${CA_ID}"
+          }
+
+          # Register a client cert+key in Kong; returns the Kong certificate ID via stdout.
+          # Idempotent: matches on the SNI tag we attach.
+          register_client_cert() {
+            CERT_FILE="${1}"
+            KEY_FILE="${2}"
+            TAG="${3}"
+            CERT_PEM=$(cat "${CERT_FILE}")
+            KEY_PEM=$(cat "${KEY_FILE}")
+            echo "--- Registering client certificate (tag=${TAG})" >&2
+
+            # Look for an existing cert with our tag
+            EXISTING_ID=$(curl -s "${KONG_ADMIN}/certificates" \
+              | grep -B5 "\"${TAG}\"" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+
+            if [ -n "${EXISTING_ID}" ]; then
+              echo "  Client cert already registered (id=${EXISTING_ID}), updating..." >&2
+              curl -s -X PATCH "${KONG_ADMIN}/certificates/${EXISTING_ID}" \
+                --data-urlencode "cert=${CERT_PEM}" \
+                --data-urlencode "key=${KEY_PEM}" > /dev/null
+              echo "${EXISTING_ID}"
+              return
+            fi
+
+            echo "  Uploading client cert..." >&2
+            RESPONSE=$(curl -s -X POST "${KONG_ADMIN}/certificates" \
+              --data-urlencode "cert=${CERT_PEM}" \
+              --data-urlencode "key=${KEY_PEM}" \
+              -d "tags[]=${TAG}")
+            CERT_ID=$(echo "${RESPONSE}" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+            echo "  Client cert registered (id=${CERT_ID})" >&2
+            echo "${CERT_ID}"
+          }
+
+          # Create or update the good-behaviour HTTPS service with mTLS client cert and CA
+          upsert_gb_service() {
+            SVC_NAME="${1}"
+            SVC_URL="${2}"
+            CA_ID="${3}"
+            CLIENT_CERT_ID="${4}"
+            echo "--- Upserting good-behaviour mTLS service: ${SVC_NAME}"
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${KONG_ADMIN}/services/${SVC_NAME}")
+            if [ "${STATUS}" = "200" ]; then
+              echo "  Service exists, patching TLS settings..."
+              curl -s -X PATCH "${KONG_ADMIN}/services/${SVC_NAME}" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"url\": \"${SVC_URL}\",
+                  \"tls_verify\": true,
+                  \"tls_verify_depth\": 2,
+                  \"ca_certificates\": [\"${CA_ID}\"],
+                  \"client_certificate\": {\"id\": \"${CLIENT_CERT_ID}\"}
+                }" > /dev/null
+            else
+              echo "  Creating service with mTLS settings..."
+              curl -s -X POST "${KONG_ADMIN}/services" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"${SVC_NAME}\",
+                  \"url\": \"${SVC_URL}\",
+                  \"tls_verify\": true,
+                  \"tls_verify_depth\": 2,
+                  \"ca_certificates\": [\"${CA_ID}\"],
+                  \"client_certificate\": {\"id\": \"${CLIENT_CERT_ID}\"}
+                }" > /dev/null
+            fi
+          }
+
+          # -------------------------------------------------------
+          # 1. Dogcatcher: inject service + route + plugin
+          # -------------------------------------------------------
+          echo ""
+          echo "=== Configuring Dogcatcher routes ==="
+
+          INJECT_SVC_NAME="${SERVICE_NAME}"
+          upsert_service "${INJECT_SVC_NAME}" "${SERVICE_URL}"
+          upsert_route "${INJECT_SVC_NAME}" "${INJECT_ROUTE}" "${INJECT_PATH}" "true"
+          upsert_plugin "${INJECT_ROUTE}"
+
+          # Root service for /api and /static photo URL routes
+          ROOT_SVC_NAME="${SERVICE_NAME}-root"
+          ROOT_SVC_URL=$(echo "${SERVICE_URL}" | sed 's|/api$||')
+          upsert_service "${ROOT_SVC_NAME}" "${ROOT_SVC_URL}"
+          upsert_route "${ROOT_SVC_NAME}" "${API_ROUTE}" "${API_PATH}" "false"
+          upsert_plugin "${API_ROUTE}"
+          upsert_route "${ROOT_SVC_NAME}" "${STATIC_ROUTE}" "${STATIC_PATH}" "false"
+          upsert_plugin "${STATIC_ROUTE}"
+
+          # -------------------------------------------------------
+          # 2. Good Behaviour: mTLS service + route (if enabled)
+          # -------------------------------------------------------
+          if [ "${GB_MTLS_ENABLED}" = "true" ]; then
+            echo ""
+            echo "=== Configuring Good Behaviour mTLS route ==="
+
+            # Register the CA cert (good-behaviour verifies Kong's client cert against this CA)
+            CA_ID=$(register_ca_cert "${GB_MTLS_CA_FILE}")
+
+            # Register Kong's client cert (Kong presents this to good-behaviour)
+            CLIENT_CERT_ID=$(register_client_cert \
+              "${GB_MTLS_CLIENT_CERT_FILE}" \
+              "${GB_MTLS_CLIENT_KEY_FILE}" \
+              "${GB_CLIENT_CERT_TAG}")
+
+            # Create the HTTPS service pointing at good-behaviour:5443 with mTLS
+            upsert_gb_service \
+              "${GB_SERVICE_NAME}" \
+              "${GB_SERVICE_URL}" \
+              "${CA_ID}" \
+              "${CLIENT_CERT_ID}"
+
+            # Create the plain HTTP inbound route (citizen app calls /good-behaviour on Kong)
+            upsert_route "${GB_SERVICE_NAME}" "${GB_ROUTE_NAME}" "${GB_ROUTE_PATH}" "true"
+
+            echo "Good Behaviour mTLS route configured:"
+            echo "  Citizen -> Kong ${GB_ROUTE_PATH} (plain HTTP)"
+            echo "  Kong -> good-behaviour:5443 (mTLS, client cert id=${CLIENT_CERT_ID}, CA id=${CA_ID})"
+          fi
+
+          echo ""
+          echo "=== Kong configuration complete ==="
+          echo "Routes configured:"
+          curl -s "${KONG_ADMIN}/routes" | grep -o '"name":"[^"]*"' | sort
+{{- end }}

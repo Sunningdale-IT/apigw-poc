@@ -1,0 +1,192 @@
+---
+# Mapped from helm-chart/apigw-demo/my-values.yaml
+# Use with:
+#   helm install <release-name> ./helm-chart/citizen-suite -f my-values.yaml -f secrets.yaml
+
+dogcatcher:
+  enabled: true
+  replicaCount: 1
+  imagePullSecrets:
+    - name: regcred
+  image:
+    repository: docker.io/jimleitch/dogcatcher-api
+    pullPolicy: Always
+    tag: "latest"
+  ingress:
+    enabled: true
+    host: dogcatcher.jim00.pd.test-rig.nl
+  env:
+    apiKeyRequired: "true"
+
+kong:
+  enabled: true
+  replicaCount: 1
+  imagePullSecrets:
+    - name: regcred
+  image:
+    repository: docker.io/jimleitch/kong-oidc
+    pullPolicy: Always
+    tag: "latest"
+  proxy:
+    enabled: true
+    ingress:
+      enabled: true
+      host: kong.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-proxy-tls
+  admin:
+    enabled: true
+    ingress:
+      enabled: true
+      host: kong-admin.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-admin-tls
+  manager:
+    enabled: true
+    ingress:
+      enabled: true
+      host: kong-manager.jim00.pd.test-rig.nl
+      tls:
+        enabled: true
+        secretName: kong-manager-tls
+  goodbehaviour:
+    mtls:
+      enabled: true
+      tlsVerify: true
+      upstreamHost: "good-behaviour"
+      upstreamPort: 5443
+
+citizen:
+  enabled: true
+  replicaCount: 1
+  imagePullSecrets:
+    - name: regcred
+  image:
+    repository: docker.io/jimleitch/model-citizen
+    pullPolicy: Always
+    tag: "latest"
+  ingress:
+    enabled: true
+    host: citizen.jim00.pd.test-rig.nl
+  env:
+    # Keep legacy behavior from apigw-demo values:
+    # citizen -> Kong /dogcatcher and /good-behaviour
+    dogcatcherUrl: "http://kong-proxy:8000/dogcatcher"
+    goodBehaviourUrl: "http://kong-proxy:8000/good-behaviour"
+
+certosaur:
+  enabled: true
+  replicaCount: 1
+  imagePullSecrets:
+    - name: regcred
+  image:
+    repository: docker.io/jimleitch/certosaur
+    pullPolicy: Always
+    tag: "latest"
+  ingress:
+    enabled: true
+    host: certosaur.jim00.pd.test-rig.nl
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  imagePullSecrets:
+    - name: regcred
+  ingress:
+    enabled: true
+    host: keycloak.jim00.pd.test-rig.nl
+
+postgres:
+  enabled: true
+  persistence:
+    storageClass: default
+
+# Keep additional services enabled by default (as citizen-suite does)
+moviezzz:
+  enabled: true
+  imagePullSecrets:
+    - name: regcred
+freeparking:
+  enabled: true
+  imagePullSecrets:
+    - name: regcred
+goodbehaviour:
+  enabled: true
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.tls.passthrough: "true"
+  mtls:
+    enabled: true
+    requiredClientCN: ""
+  imagePullSecrets:
+    - name: regcred
+parkruns:
+  enabled: true
+  imagePullSecrets:
+    - name: regcred
+
+apisix:
+  enabled: true
+  fullnameOverride: apisix
+  preconfigure:
+    enabled: true
+    adminService: apisix-admin
+    adminPort: 9180
+    adminKey: edd1c9f034335f136f87ad84b625c8f1
+    dogcatcherRouteId: dogcatcher-route
+    goodBehaviourRouteId: good-behaviour
+  global:
+    imagePullSecrets:
+      - regcred
+  imagePullSecrets:
+    - name: regcred
+  dashboard:
+    enabled: true
+    fullnameOverride: apisix-dashboard
+    config:
+      conf:
+        etcd:
+          endpoints:
+            - etcd:2379
+    ingress:
+      enabled: true
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      hosts:
+        - host: apisix-dashboard.jim00.pd.test-rig.nl
+          paths:
+            - /
+      tls:
+        - secretName: apisix-dashboard-tls
+          hosts:
+            - apisix-dashboard.jim00.pd.test-rig.nl
+  etcd:
+    fullnameOverride: etcd
+    global:
+      imagePullSecrets:
+        - regcred
+    customLivenessProbe:
+      tcpSocket:
+        port: 2379
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 6
+    customReadinessProbe:
+      tcpSocket:
+        port: 2379
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 6
+    image:
+      registry: gcr.io
+      repository: etcd-development/etcd
+      tag: v3.5.17
+      pullPolicy: IfNotPresent

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test Good Behaviour (criminal records) and Dogcatcher (lost dogs) API flows.
+# Test Good Behaviour and Dogcatcher (lost dogs) API flows.
 #
 # Usage: ./test-services.sh [--good-behaviour|--lost-dog|--all]
 #
@@ -14,7 +14,7 @@
 #
 # Kong routes (discovered from Kong Admin):
 #   /dogcatcher          → dogcatcher service (request-transformer injects auth)
-#   /criminal-records    → good-behaviour service (plain HTTP, no auth)
+#   /good-behaviour      → good-behaviour service (mTLS, via Kong)
 #
 # Environment overrides:
 #   KONG_HOST     base hostname for Kong proxy, no scheme (default: kong.jim00.pd.test-rig.nl)
@@ -89,10 +89,10 @@ run_test() {
 
 # ─────────────────────────────────────────────────────────────
 # Good Behaviour tests
-# Reached via /criminal-records route (plain HTTP, no auth plugin)
+# Reached via /good-behaviour route (mTLS upstream, strip_path=true)
 # ─────────────────────────────────────────────────────────────
 test_good_behaviour() {
-    print_header "Good Behaviour — Criminal Record Checks"
+    print_header "Good Behaviour"
 
     # Route: /good-behaviour (strip_path=true) → good-behaviour:5443/api/citizens
     local base="${KONG_BASE}/good-behaviour"

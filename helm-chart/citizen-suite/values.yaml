@@ -1,0 +1,83 @@
+# Umbrella chart values.
+# This chart only orchestrates subcharts.
+
+# Smoke tests run automatically after every install/upgrade (post-install,post-upgrade)
+# and are also available via: helm test <release> -n <namespace>
+tests:
+  enabled: true
+  image: alpine:3.19
+  kongProxyService: kong-proxy
+  kongProxyPort: 8000
+
+dogcatcher:
+  enabled: true
+
+citizen:
+  enabled: true
+
+certosaur:
+  enabled: true
+
+keycloak:
+  enabled: true
+
+moviezzz:
+  enabled: true
+
+freeparking:
+  enabled: true
+
+goodbehaviour:
+  enabled: true
+
+parkruns:
+  enabled: true
+
+postgres:
+  enabled: true
+
+kong:
+  enabled: true
+
+apisix:
+  enabled: true
+  fullnameOverride: apisix
+  dashboard:
+    fullnameOverride: apisix-dashboard
+  preconfigure:
+    enabled: true
+    adminService: apisix-admin
+    adminPort: 9180
+    adminKey: edd1c9f034335f136f87ad84b625c8f1
+    dogcatcherRouteId: dogcatcher-route
+    goodBehaviourRouteId: good-behaviour
+  global:
+    imagePullSecrets:
+      - regcred
+  # Enforce non-Bitnami etcd image for APISIX.
+  etcd:
+    fullnameOverride: etcd
+    global:
+      imagePullSecrets:
+        - regcred
+    customLivenessProbe:
+      tcpSocket:
+        port: 2379
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 6
+    customReadinessProbe:
+      tcpSocket:
+        port: 2379
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 6
+    image:
+      registry: gcr.io
+      repository: etcd-development/etcd
+      tag: v3.5.17
+      pullPolicy: IfNotPresent

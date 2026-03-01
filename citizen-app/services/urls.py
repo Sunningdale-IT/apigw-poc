@@ -14,4 +14,8 @@ urlpatterns = [    path('health/', views.health, name='health'),    path('', vie
     path('trash-collection/', views.trash_collection, name='trash_collection'),
     path('found-dogs/', views.found_dogs, name='found_dogs'),
     path('found-dogs/<int:dog_id>/', views.found_dog_detail, name='found_dog_detail'),
+    path('movies/', views.movies_view, name='movies'),
+    path('parking/', views.parking_view, name='parking'),
+    path('good-behaviour/', views.good_behaviour_view, name='good_behaviour'),
+    path('park-runs/', views.park_runs_view, name='park_runs'),
 ]

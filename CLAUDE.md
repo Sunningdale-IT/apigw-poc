@@ -57,10 +57,10 @@ kubectl get all,ingress,pvc -n apigw-demo
 ```
 Internet → Kong Gateway (port 8000) → Dogcatcher API (port 5000)
                ↓ mTLS (port 5443)
-           Good Behaviour (criminal records)
+           Good Behaviour (behaviour records, mTLS)
                ↑
 Model Citizen portal (port 5002)
-    ├── calls Kong → Dogcatcher (found dogs, criminal checks)
+    ├── calls Kong → Dogcatcher (found dogs), Good Behaviour (behaviour check)
     ├── calls Moviezzz directly
     ├── calls Free Parking directly
     └── calls Park Runs directly
@@ -77,7 +77,7 @@ Nginx Proxy (port 8080/8443/8444) — multi-protocol routing
 | Dogcatcher API | `app/` | 5001 (direct) | PostgreSQL | Django REST, photo uploads, DRF Spectacular/Swagger |
 | Model Citizen | `citizen-app/` | 5002 | SQLite | Django web portal, mock citizens (CIT001/CIT002/CIT003/DEMO) |
 | Certosaur | `certosaur/` | 5003 | SQLite | Django, issues CA/server/client certs via UI |
-| Good Behaviour | `good-behaviour/` | 5000/5443 | SQLite | Django, criminal records; dual-port when mTLS enabled |
+| Good Behaviour | `good-behaviour/` | 5000/5443 | PostgreSQL | Django, behaviour records; dual-port when mTLS enabled |
 | Free Parking | `free-parking/` | — | SQLite | Django, parking spots API |
 | Moviezzz | `moviezzz/` | — | SQLite | Django, cinema listings API |
 | Park Runs | `park-runs/` | — | SQLite | Django, park run events API |
