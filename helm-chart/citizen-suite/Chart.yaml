@@ -1,0 +1,52 @@
+apiVersion: v2
+name: citizen-suite
+description: Citizen suite chart that orchestrates all API gateway POC subcharts
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: dogcatcher
+    version: 0.1.0
+    repository: "file://./charts/dogcatcher"
+    condition: dogcatcher.enabled
+  - name: citizen
+    version: 0.1.0
+    repository: "file://./charts/citizen"
+    condition: citizen.enabled
+  - name: certosaur
+    version: 0.1.0
+    repository: "file://./charts/certosaur"
+    condition: certosaur.enabled
+  - name: keycloak
+    version: 0.1.0
+    repository: "file://./charts/keycloak"
+    condition: keycloak.enabled
+  - name: moviezzz
+    version: 0.1.0
+    repository: "file://./charts/moviezzz"
+    condition: moviezzz.enabled
+  - name: freeparking
+    version: 0.1.0
+    repository: "file://./charts/freeparking"
+    condition: freeparking.enabled
+  - name: goodbehaviour
+    version: 0.1.0
+    repository: "file://./charts/goodbehaviour"
+    condition: goodbehaviour.enabled
+  - name: parkruns
+    version: 0.1.0
+    repository: "file://./charts/parkruns"
+    condition: parkruns.enabled
+  - name: postgres
+    version: 0.1.0
+    repository: "file://./charts/postgres"
+    condition: postgres.enabled
+  - name: kong
+    version: 0.1.0
+    repository: "file://./charts/kong"
+    condition: kong.enabled
+  - name: apisix
+    version: 2.9.x
+    repository: https://charts.apiseven.com
+    condition: apisix.enabled

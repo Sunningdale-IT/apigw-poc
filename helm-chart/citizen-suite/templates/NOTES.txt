@@ -1,0 +1,77 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Available application URLs:
+
+{{- $urls := list -}}
+
+{{- if and .Values.citizen.enabled .Values.citizen.ingress.enabled .Values.citizen.ingress.host }}
+{{- $urls = append $urls (printf "Citizen: https://%s" .Values.citizen.ingress.host) -}}
+{{- end }}
+{{- if and .Values.dogcatcher.enabled .Values.dogcatcher.ingress.enabled .Values.dogcatcher.ingress.host }}
+{{- $urls = append $urls (printf "Dogcatcher: https://%s" .Values.dogcatcher.ingress.host) -}}
+{{- end }}
+{{- if and .Values.certosaur.enabled .Values.certosaur.ingress.enabled .Values.certosaur.ingress.host }}
+{{- $urls = append $urls (printf "Certosaur: https://%s" .Values.certosaur.ingress.host) -}}
+{{- end }}
+{{- if and .Values.keycloak.enabled .Values.keycloak.ingress.enabled .Values.keycloak.ingress.host }}
+{{- $urls = append $urls (printf "Keycloak: https://%s" .Values.keycloak.ingress.host) -}}
+{{- end }}
+
+{{- if and .Values.moviezzz.enabled .Values.moviezzz.ingress.enabled }}
+{{- range .Values.moviezzz.ingress.hosts }}
+{{- $urls = append $urls (printf "Moviezzz: https://%s" .host) -}}
+{{- end }}
+{{- end }}
+{{- if and .Values.freeparking.enabled .Values.freeparking.ingress.enabled }}
+{{- range .Values.freeparking.ingress.hosts }}
+{{- $urls = append $urls (printf "Free Parking: https://%s" .host) -}}
+{{- end }}
+{{- end }}
+{{- if and .Values.goodbehaviour.enabled .Values.goodbehaviour.ingress.enabled }}
+{{- range .Values.goodbehaviour.ingress.hosts }}
+{{- $urls = append $urls (printf "Good Behaviour: https://%s" .host) -}}
+{{- end }}
+{{- end }}
+{{- if and .Values.parkruns.enabled .Values.parkruns.ingress.enabled }}
+{{- range .Values.parkruns.ingress.hosts }}
+{{- $urls = append $urls (printf "Park Runs: https://%s" .host) -}}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.kong.enabled .Values.kong.proxy.enabled .Values.kong.proxy.ingress.enabled .Values.kong.proxy.ingress.host }}
+{{- $urls = append $urls (printf "Kong Proxy: https://%s" .Values.kong.proxy.ingress.host) -}}
+{{- end }}
+{{- if and .Values.kong.enabled .Values.kong.admin.enabled .Values.kong.admin.ingress.enabled .Values.kong.admin.ingress.host }}
+{{- $urls = append $urls (printf "Kong Admin: https://%s" .Values.kong.admin.ingress.host) -}}
+{{- end }}
+{{- if and .Values.kong.enabled .Values.kong.manager.enabled .Values.kong.manager.ingress.enabled .Values.kong.manager.ingress.host }}
+{{- $urls = append $urls (printf "Kong Manager: https://%s" .Values.kong.manager.ingress.host) -}}
+{{- end }}
+
+{{- if and .Values.apisix.enabled .Values.apisix.ingress.enabled }}
+{{- range .Values.apisix.ingress.hosts }}
+{{- if kindIs "map" . }}
+{{- $urls = append $urls (printf "APISIX Gateway: https://%s" .host) -}}
+{{- else }}
+{{- $urls = append $urls (printf "APISIX Gateway: https://%s" .) -}}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.apisix.enabled .Values.apisix.dashboard.enabled .Values.apisix.dashboard.ingress.enabled }}
+{{- range .Values.apisix.dashboard.ingress.hosts }}
+{{- if kindIs "map" . }}
+{{- $urls = append $urls (printf "APISIX Dashboard: https://%s" .host) -}}
+{{- else }}
+{{- $urls = append $urls (printf "APISIX Dashboard: https://%s" .) -}}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if gt (len $urls) 0 }}
+{{- range $urls }}
+- {{ . }}
+{{- end }}
+{{- else }}
+- No ingress URLs are enabled in the current values.
+{{- end }}

@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+type: Opaque
+stringData:
+  password: {{ .Values.env.password | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  init-databases.sh: |
+    #!/bin/bash
+    set -e
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.kong.username }} WITH PASSWORD '{{ .Values.databases.kong.password }}';
+      CREATE DATABASE {{ .Values.databases.kong.name }} OWNER {{ .Values.databases.kong.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.kong.name }} TO {{ .Values.databases.kong.username }};
+      CREATE USER {{ .Values.databases.dogcatcher.username }} WITH PASSWORD '{{ .Values.databases.dogcatcher.password }}';
+      CREATE DATABASE {{ .Values.databases.dogcatcher.name }} OWNER {{ .Values.databases.dogcatcher.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.dogcatcher.name }} TO {{ .Values.databases.dogcatcher.username }};
+    EOSQL
+    {{- if .Values.components.keycloakEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.keycloak.username }} WITH PASSWORD '{{ .Values.databases.keycloak.password }}';
+      CREATE DATABASE {{ .Values.databases.keycloak.name }} OWNER {{ .Values.databases.keycloak.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.keycloak.name }} TO {{ .Values.databases.keycloak.username }};
+    EOSQL
+    {{- end }}
+    {{- if .Values.components.certosaurEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.certosaur.username }} WITH PASSWORD '{{ .Values.databases.certosaur.password }}';
+      CREATE DATABASE {{ .Values.databases.certosaur.name }} OWNER {{ .Values.databases.certosaur.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.certosaur.name }} TO {{ .Values.databases.certosaur.username }};
+    EOSQL
+    {{- end }}
+    {{- if .Values.components.moviezzzEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.moviezzz.username }} WITH PASSWORD '{{ .Values.databases.moviezzz.password }}';
+      CREATE DATABASE {{ .Values.databases.moviezzz.name }} OWNER {{ .Values.databases.moviezzz.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.moviezzz.name }} TO {{ .Values.databases.moviezzz.username }};
+    EOSQL
+    {{- end }}
+    {{- if .Values.components.freeparkingEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.freeparking.username }} WITH PASSWORD '{{ .Values.databases.freeparking.password }}';
+      CREATE DATABASE {{ .Values.databases.freeparking.name }} OWNER {{ .Values.databases.freeparking.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.freeparking.name }} TO {{ .Values.databases.freeparking.username }};
+    EOSQL
+    {{- end }}
+    {{- if .Values.components.goodbehaviourEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.goodbehaviour.username }} WITH PASSWORD '{{ .Values.databases.goodbehaviour.password }}';
+      CREATE DATABASE {{ .Values.databases.goodbehaviour.name }} OWNER {{ .Values.databases.goodbehaviour.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.goodbehaviour.name }} TO {{ .Values.databases.goodbehaviour.username }};
+    EOSQL
+    {{- end }}
+    {{- if .Values.components.parkrunsEnabled }}
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+      CREATE USER {{ .Values.databases.parkruns.username }} WITH PASSWORD '{{ .Values.databases.parkruns.password }}';
+      CREATE DATABASE {{ .Values.databases.parkruns.name }} OWNER {{ .Values.databases.parkruns.username }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.databases.parkruns.name }} TO {{ .Values.databases.parkruns.username }};
+    EOSQL
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 5432
+      name: postgres
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: postgres
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: {{ .Values.env.database | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.env.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: postgres-init
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+      annotations:
+        helm.sh/resource-policy: keep
+    spec:
+      accessModes: [ {{ .Values.persistence.accessMode | quote }} ]
+      {{- if .Values.persistence.storageClass }}
+      storageClassName: {{ .Values.persistence.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size | quote }}
+  {{- end }}

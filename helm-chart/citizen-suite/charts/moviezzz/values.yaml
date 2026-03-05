@@ -1,0 +1,75 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/jimleitch/moviezzz
+  pullPolicy: Always
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: moviezzz.jim00.pd.test-rig.nl
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: moviezzz-tls
+      hosts:
+        - moviezzz.jim00.pd.test-rig.nl
+
+env:
+  djangoDebug: "false"
+  secretKey: CHANGE_ME
+  allowedHosts: moviezzz.jim00.pd.test-rig.nl,moviezzz,localhost,*
+  csrfTrustedOrigins: https://moviezzz.jim00.pd.test-rig.nl
+  corsAllowAll: "true"
+
+postgres:
+  host: ""
+  port: "5432"
+  database: moviezzz
+  username: moviezzz
+  password: CHANGE_ME
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health/
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health/
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+imagePullSecrets: []
+podSecurityContext:
+  fsGroup: 1000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

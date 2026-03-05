@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/jimleitch/model-citizen
+  pullPolicy: Always
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: citizen.jim00.pd.test-rig.nl
+  tls:
+    enabled: true
+    secretName: citizen-tls
+
+env:
+  djangoDebug: "false"
+  secretKey: CHANGE_ME
+  allowedHosts: citizen.jim00.pd.test-rig.nl,citizen,localhost,*
+  csrfTrustedOrigins: https://citizen.jim00.pd.test-rig.nl
+  dogcatcherUrl: ""
+  dogcatcherPublicUrl: https://dogcatcher.jim00.pd.test-rig.nl
+  dogcatcherApiKey: CHANGE_ME
+  goodBehaviourUrl: ""
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+imagePullSecrets: []
+podSecurityContext:
+  fsGroup: 1000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

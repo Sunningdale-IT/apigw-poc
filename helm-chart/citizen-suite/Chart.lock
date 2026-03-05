@@ -1,0 +1,36 @@
+dependencies:
+- name: dogcatcher
+  repository: file://./charts/dogcatcher
+  version: 0.1.0
+- name: citizen
+  repository: file://./charts/citizen
+  version: 0.1.0
+- name: certosaur
+  repository: file://./charts/certosaur
+  version: 0.1.0
+- name: keycloak
+  repository: file://./charts/keycloak
+  version: 0.1.0
+- name: moviezzz
+  repository: file://./charts/moviezzz
+  version: 0.1.0
+- name: freeparking
+  repository: file://./charts/freeparking
+  version: 0.1.0
+- name: goodbehaviour
+  repository: file://./charts/goodbehaviour
+  version: 0.1.0
+- name: parkruns
+  repository: file://./charts/parkruns
+  version: 0.1.0
+- name: postgres
+  repository: file://./charts/postgres
+  version: 0.1.0
+- name: kong
+  repository: file://./charts/kong
+  version: 0.1.0
+- name: apisix
+  repository: https://charts.apiseven.com
+  version: 2.9.0
+digest: sha256:9db9ceba7c82be27e8f1af14c4694db77545c9e6815e8dfc0ad02d7a82cd3614
+generated: "2026-02-27T00:15:16.668191+01:00"

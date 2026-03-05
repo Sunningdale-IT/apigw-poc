@@ -1,0 +1,69 @@
+image:
+  repository: postgres
+  tag: 16-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5432
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+env:
+  database: postgres
+  username: postgres
+  password: CHANGE_ME
+
+databases:
+  kong:
+    name: kong
+    username: kong
+    password: CHANGE_ME
+  dogcatcher:
+    name: dogcatcher
+    username: dogcatcher
+    password: CHANGE_ME
+  keycloak:
+    name: keycloak
+    username: keycloak
+    password: CHANGE_ME
+  certosaur:
+    name: certosaur
+    username: certosaur
+    password: CHANGE_ME
+  moviezzz:
+    name: moviezzz
+    username: moviezzz
+    password: CHANGE_ME
+  freeparking:
+    name: freeparking
+    username: freeparking
+    password: CHANGE_ME
+  goodbehaviour:
+    name: goodbehaviour
+    username: goodbehaviour
+    password: CHANGE_ME
+  parkruns:
+    name: parkruns
+    username: parkruns
+    password: CHANGE_ME
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+components:
+  keycloakEnabled: true
+  certosaurEnabled: true
+  moviezzzEnabled: true
+  freeparkingEnabled: true
+  goodbehaviourEnabled: true
+  parkrunsEnabled: true

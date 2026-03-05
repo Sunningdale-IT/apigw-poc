@@ -21,7 +21,7 @@ spec:
     clientAuthType: RequireAndVerifyClientCert
     # Reference to the CA secret for client certificate validation
     secretNames:
-      - traefik-mtls-ca
+      - mtls-ca-secret
 
 ---
 # Middleware to pass client certificate info to backend

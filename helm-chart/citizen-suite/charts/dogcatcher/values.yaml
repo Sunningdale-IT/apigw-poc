@@ -1,0 +1,67 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/jimleitch/dogcatcher-api
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: dogcatcher.jim00.pd.test-rig.nl
+  tls:
+    enabled: true
+    secretName: dogcatcher-tls
+
+env:
+  djangoDebug: "false"
+  secretKey: CHANGE_ME
+  allowedHosts: dogcatcher.jim00.pd.test-rig.nl,dogcatcher,localhost,*
+  apiKeyRequired: "true"
+  apiKeys: CHANGE_ME
+
+postgres:
+  host: ""
+  port: "5432"
+  database: dogcatcher
+  username: dogcatcher
+  password: CHANGE_ME
+
+testData:
+  count: "15"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+imagePullSecrets: []
+podSecurityContext:
+  fsGroup: 1000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

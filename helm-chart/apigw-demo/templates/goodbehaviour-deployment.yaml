@@ -1,0 +1,181 @@
+{{- if .Values.goodbehaviour.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-goodbehaviour
+  labels:
+    {{- include "apigw-demo.goodbehaviour.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.goodbehaviour.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.goodbehaviour.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.goodbehaviour.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until nc -z {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local 5432; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      - name: run-migrations
+        image: "{{ .Values.goodbehaviour.image.repository }}:{{ .Values.goodbehaviour.image.tag }}"
+        command: ['python', 'manage.py', 'migrate', '--noinput']
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.goodbehaviour.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.goodbehaviour.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.goodbehaviour.env.djangoDebug | quote }}
+      - name: populate-movies
+        image: "{{ .Values.goodbehaviour.image.repository }}:{{ .Values.goodbehaviour.image.tag }}"
+        command:
+        - sh
+        - -c
+        - python manage.py populate_records || echo "Populate skipped (data exists or non-fatal error)"
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.goodbehaviour.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.goodbehaviour.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.goodbehaviour.env.djangoDebug | quote }}
+      containers:
+      - name: goodbehaviour
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.goodbehaviour.image.repository }}:{{ .Values.goodbehaviour.image.tag }}"
+        imagePullPolicy: {{ .Values.goodbehaviour.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.goodbehaviour.service.targetPort }}
+          protocol: TCP
+        {{- if .Values.goodbehaviour.mtls.enabled }}
+        - name: https
+          containerPort: 5443
+          protocol: TCP
+        {{- end }}
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.goodbehaviour.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.goodbehaviour.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-goodbehaviour-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.goodbehaviour.env.djangoDebug | quote }}
+        - name: ALLOWED_HOSTS
+          value: {{ .Values.goodbehaviour.env.allowedHosts | quote }}
+        - name: CSRF_TRUSTED_ORIGINS
+          value: {{ .Values.goodbehaviour.env.csrfTrustedOrigins | quote }}
+        - name: CORS_ALLOW_ALL
+          value: {{ .Values.goodbehaviour.env.corsAllowAll | quote }}
+        {{- if .Values.goodbehaviour.mtls.enabled }}
+        - name: MTLS_ENABLED
+          value: "true"
+        - name: MTLS_CERT_FILE
+          value: "/app/certs/server.crt"
+        - name: MTLS_KEY_FILE
+          value: "/app/certs/server.key"
+        - name: MTLS_CA_FILE
+          value: "/app/certs/ca.crt"
+        - name: MTLS_REQUIRED_CN
+          value: {{ .Values.goodbehaviour.mtls.requiredClientCN | quote }}
+        {{- end }}
+        {{- if .Values.goodbehaviour.mtls.enabled }}
+        volumeMounts:
+        - name: good-behaviour-mtls-certs
+          mountPath: /app/certs
+          readOnly: true
+        {{- end }}
+        {{- if .Values.goodbehaviour.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.goodbehaviour.livenessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.goodbehaviour.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.goodbehaviour.livenessProbe.periodSeconds }}
+        {{- end }}
+        {{- if .Values.goodbehaviour.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.goodbehaviour.readinessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.goodbehaviour.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.goodbehaviour.readinessProbe.periodSeconds }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.goodbehaviour.resources | nindent 10 }}
+      {{- if .Values.goodbehaviour.mtls.enabled }}
+      volumes:
+      - name: good-behaviour-mtls-certs
+        secret:
+          secretName: {{ include "apigw-demo.fullname" . }}-good-behaviour-mtls
+          items:
+          - key: server.crt
+            path: server.crt
+          - key: server.key
+            path: server.key
+          - key: ca.crt
+            path: ca.crt
+      {{- end }}
+{{- end }}

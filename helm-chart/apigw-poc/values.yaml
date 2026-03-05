@@ -1,0 +1,184 @@
+# Default values for apigw-poc
+
+# Global configuration
+global:
+  domainSuffix: example.com
+  storageClass: default
+
+# Kong Gateway configuration (existing)
+kong:
+  enabled: true
+  managerIngress:
+    enabled: false
+  adminApiIngress:
+    enabled: false
+  keycloakAuth:
+    enabled: false
+    clientId: kong-manager
+    clientSecret: ""
+    issuerUrl: ""
+    cookieDomain: ""
+    emailDomains:
+      - "*"
+    extraArgs: []
+    oauth2Proxy:
+      replicaCount: 1
+      image:
+        repository: quay.io/oauth2-proxy/oauth2-proxy
+        tag: v7.4.0
+        pullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+# Producer and Consumer admin credentials (existing)
+producer:
+  admin:
+    username: admin
+    password: CHANGE_ME
+
+consumer:
+  admin:
+    username: admin
+    password: CHANGE_ME
+
+# Image pull secrets (if using private registry)
+imagePullSecrets: []
+# - name: regcred
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Security Context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+
+# Apache APISIX API Gateway (deployed as subchart)
+# Uses official Apache APISIX Helm chart: https://github.com/apache/apisix-helm-chart
+apisix:
+  enabled: true
+  
+  # APISIX Gateway configuration
+  gateway:
+    type: NodePort
+    
+  # Admin API configuration
+  admin:
+    enabled: true
+    type: ClusterIP
+    # Admin API key - CHANGE THIS IN PRODUCTION
+    credentials:
+      admin: edd1c9f034335f136f87ad84b625c8f1  # Default admin key - CHANGE ME
+      viewer: 4054f7cf07e344346cd3f287985e76a2  # Default viewer key - CHANGE ME
+  
+  # APISIX configuration
+  apisix:
+    timezone: UTC
+    
+    # Enable APISIX plugins
+    plugins:
+      - api-breaker
+      - authz-keycloak
+      - basic-auth
+      - cors
+      - jwt-auth
+      - key-auth
+      - limit-conn
+      - limit-count
+      - limit-req
+      - openid-connect
+      - prometheus
+      - proxy-rewrite
+      - redirect
+      - request-validation
+      - response-rewrite
+  
+  # etcd configuration
+  etcd:
+    enabled: true
+    replicaCount: 1  # Reduced for POC
+    
+    # Use official etcd image instead of Bitnami
+    image:
+      repository: gcr.io/etcd-development/etcd
+      tag: v3.5.17
+      pullPolicy: IfNotPresent
+    
+    persistence:
+      enabled: true
+      size: 4Gi
+      storageClass: ""  # Uses global.storageClass if empty
+  
+  # Ingress configuration for APISIX Gateway
+  ingress:
+    enabled: false  # Disable for POC, can be enabled via --set
+  
+  # APISIX Dashboard (Web UI)
+  dashboard:
+    enabled: true
+    
+    config:
+      conf:
+        etcd:
+          endpoints:
+            - apisix-etcd:2379
+        
+        authentication:
+          secret: secret  # CHANGE THIS IN PRODUCTION
+          expire_time: 3600
+          users:
+            - username: admin
+              password: admin  # CHANGE THIS IN PRODUCTION
+    
+    service:
+      type: ClusterIP
+    
+    ingress:
+      enabled: false  # Disable for POC
+  
+  # Resources for APISIX pods
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Security context - APISIX needs write access to temp directories
+  securityContext:
+    runAsNonRoot: false  # APISIX image runs as root by default
+    runAsUser: 0
+  
+  podSecurityContext:
+    fsGroup: 0

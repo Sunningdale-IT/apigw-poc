@@ -1,0 +1,23 @@
+{{- if .Values.goodbehaviour.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-goodbehaviour
+  labels:
+    {{- include "apigw-demo.goodbehaviour.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.goodbehaviour.service.type }}
+  ports:
+    - port: {{ .Values.goodbehaviour.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.goodbehaviour.mtls.enabled }}
+    - port: 5443
+      targetPort: https
+      protocol: TCP
+      name: https
+    {{- end }}
+  selector:
+    {{- include "apigw-demo.goodbehaviour.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,39 @@
+{{- if and .Values.moviezzz.enabled .Values.moviezzz.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-moviezzz
+  labels:
+    {{- include "apigw-demo.moviezzz.labels" . | nindent 4 }}
+  {{- with .Values.moviezzz.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.moviezzz.ingress.className }}
+  {{- if .Values.moviezzz.ingress.tls }}
+  tls:
+    {{- range .Values.moviezzz.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.moviezzz.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" $ }}-moviezzz
+                port:
+                  number: {{ $.Values.moviezzz.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

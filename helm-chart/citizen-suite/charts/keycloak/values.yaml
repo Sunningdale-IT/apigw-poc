@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/keycloak/keycloak
+  pullPolicy: IfNotPresent
+  tag: "24.0"
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: keycloak.jim00.pd.test-rig.nl
+  tls:
+    enabled: true
+    secretName: keycloak-tls
+
+env:
+  admin: admin
+  adminPassword: CHANGE_ME
+
+postgres:
+  host: ""
+  port: "5432"
+  database: keycloak
+  username: keycloak
+  password: CHANGE_ME
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity: {}

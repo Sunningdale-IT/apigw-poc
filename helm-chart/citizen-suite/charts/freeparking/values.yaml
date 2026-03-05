@@ -1,0 +1,75 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/jimleitch/free-parking
+  pullPolicy: Always
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: free-parking.jim00.pd.test-rig.nl
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: free-parking-tls
+      hosts:
+        - free-parking.jim00.pd.test-rig.nl
+
+env:
+  djangoDebug: "false"
+  secretKey: CHANGE_ME
+  allowedHosts: free-parking.jim00.pd.test-rig.nl,free-parking,localhost,*
+  csrfTrustedOrigins: https://free-parking.jim00.pd.test-rig.nl
+  corsAllowAll: "true"
+
+postgres:
+  host: ""
+  port: "5432"
+  database: freeparking
+  username: freeparking
+  password: CHANGE_ME
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health/
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health/
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+imagePullSecrets: []
+podSecurityContext:
+  fsGroup: 1000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

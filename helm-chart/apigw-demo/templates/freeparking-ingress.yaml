@@ -1,0 +1,39 @@
+{{- if and .Values.freeparking.enabled .Values.freeparking.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-freeparking
+  labels:
+    {{- include "apigw-demo.freeparking.labels" . | nindent 4 }}
+  {{- with .Values.freeparking.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.freeparking.ingress.className }}
+  {{- if .Values.freeparking.ingress.tls }}
+  tls:
+    {{- range .Values.freeparking.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.freeparking.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" $ }}-freeparking
+                port:
+                  number: {{ $.Values.freeparking.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

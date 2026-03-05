@@ -1,0 +1,145 @@
+{{- if .Values.parkruns.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-parkruns
+  labels:
+    {{- include "apigw-demo.parkruns.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.parkruns.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.parkruns.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.parkruns.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until nc -z {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local 5432; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      - name: run-migrations
+        image: "{{ .Values.parkruns.image.repository }}:{{ .Values.parkruns.image.tag }}"
+        command: ['python', 'manage.py', 'migrate', '--noinput']
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.parkruns.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.parkruns.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.parkruns.env.djangoDebug | quote }}
+      - name: populate-movies
+        image: "{{ .Values.parkruns.image.repository }}:{{ .Values.parkruns.image.tag }}"
+        command:
+        - sh
+        - -c
+        - python manage.py populate_parkruns || echo "Populate skipped (data exists or non-fatal error)"
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.parkruns.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.parkruns.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.parkruns.env.djangoDebug | quote }}
+      containers:
+      - name: parkruns
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.parkruns.image.repository }}:{{ .Values.parkruns.image.tag }}"
+        imagePullPolicy: {{ .Values.parkruns.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.parkruns.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.parkruns.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.parkruns.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-parkruns-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.parkruns.env.djangoDebug | quote }}
+        - name: ALLOWED_HOSTS
+          value: {{ .Values.parkruns.env.allowedHosts | quote }}
+        - name: CSRF_TRUSTED_ORIGINS
+          value: {{ .Values.parkruns.env.csrfTrustedOrigins | quote }}
+        - name: CORS_ALLOW_ALL
+          value: {{ .Values.parkruns.env.corsAllowAll | quote }}
+        {{- if .Values.parkruns.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.parkruns.livenessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.parkruns.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.parkruns.livenessProbe.periodSeconds }}
+        {{- end }}
+        {{- if .Values.parkruns.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.parkruns.readinessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.parkruns.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.parkruns.readinessProbe.periodSeconds }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.parkruns.resources | nindent 10 }}
+{{- end }}

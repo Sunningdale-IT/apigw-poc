@@ -20,6 +20,9 @@ KONG_HOST="${KONG_HOST:-kong.jim00.pd.test-rig.nl}"
 KONG_MTLS_HOST="${KONG_MTLS_HOST:-kong-mtls.jim00.pd.test-rig.nl}"
 CONSUMER_ENDPOINT="/consumer/api/consume"
 PRODUCER_ENDPOINT="/producer/api/data"
+# Optional explicit CA bundle for TLS server verification.
+# Leave empty to use system trust store (recommended for Let's Encrypt endpoints).
+SERVER_CA_FILE="${SERVER_CA_FILE:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -123,9 +126,15 @@ test_with_cert() {
         -w '\n%{http_code}'
     )
     
-    # Add CA cert if available
-    if [[ -f "${CERTS_DIR}/ca.crt" ]]; then
-        CURL_OPTS+=(--cacert "${CERTS_DIR}/ca.crt")
+    # Only add an explicit server CA bundle when requested.
+    # Do not default to the client-cert issuer CA because Kong/TLS endpoint
+    # is typically issued by a public CA (e.g., Let's Encrypt).
+    if [[ -n "${SERVER_CA_FILE}" ]]; then
+        if [[ -f "${SERVER_CA_FILE}" ]]; then
+            CURL_OPTS+=(--cacert "${SERVER_CA_FILE}")
+        else
+            print_warning "SERVER_CA_FILE is set but file does not exist: ${SERVER_CA_FILE}"
+        fi
     fi
     
     RESPONSE=$(curl "${CURL_OPTS[@]}" "https://${KONG_MTLS_HOST}${CONSUMER_ENDPOINT}" 2>/dev/null || echo -e "\n000")

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Movies{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-white-50">Dashboard</a></li>
+                <li class="breadcrumb-item active text-white">Movies</li>
+            </ol>
+        </nav>
+        <h1><i class="bi bi-film"></i> Movies Now Showing</h1>
+        <p class="mb-0 opacity-75">Current films at local cinemas</p>
+    </div>
+</div>
+
+<div class="container pb-5">
+    {% if error %}
+    <div class="alert alert-warning d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
+        <div>
+            <strong>Connection Issue:</strong> {{ error }}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Info Banner -->
+    <div class="alert alert-info d-flex align-items-center mb-4">
+        <i class="bi bi-info-circle-fill me-3" style="font-size: 1.5rem;"></i>
+        <div>
+            <strong>Movie Listings</strong> - Browse current films showing at local cinemas. 
+            Call the cinema directly for showtimes and ticket reservations.
+        </div>
+    </div>
+    
+    {% if movies %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="mb-0"><i class="bi bi-list"></i> {{ movies|length }} Movie{% if movies|length != 1 %}s{% endif %} Available</h5>
+    </div>
+    
+    <div class="row g-4">
+        {% for movie in movies %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ movie.title }}</h5>
+                    <div class="mb-2">
+                        <span class="badge bg-primary">{{ movie.director }}</span>
+                        <span class="badge bg-secondary">{{ movie.runtime }} min</span>
+                    </div>
+                    
+                    <p class="card-text small">{{ movie.plot|truncatewords:20 }}</p>
+                    
+                    {% if movie.cinemas %}
+                    <div class="mt-3">
+                        <strong class="small text-muted">Showing at:</strong>
+                        <ul class="list-unstyled small">
+                            {% for cinema in movie.cinemas %}
+                            <li><i class="bi bi-geo-alt"></i> {{ cinema.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% elif not error %}
+    <div class="text-center py-5">
+        <i class="bi bi-film text-muted" style="font-size: 4rem;"></i>
+        <h4 class="mt-3">No Movies Available</h4>
+        <p class="text-muted">Check back later for updated listings.</p>
+    </div>
+    {% endif %}
+    
+    <div class="mt-5">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

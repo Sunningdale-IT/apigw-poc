@@ -51,12 +51,19 @@ kong:
       tls:
         enabled: true
         secretName: kong-manager-tls
+  dogcatcher:
+    # Force Kong upstream to the external Dogcatcher endpoint
+    # instead of the in-cluster fallback service URL.
+    serviceUrl: "https://dogcatcher.jim00.pd.test-rig.nl/api"
   goodbehaviour:
     mtls:
       enabled: true
       tlsVerify: true
-      upstreamHost: "good-behaviour"
-      upstreamPort: 5443
+      # Force Kong to reach Good Behaviour via external TLS endpoint.
+      # This keeps the API path behind mTLS on the public hostname.
+      upstreamHost: "good-behaviour.jim00.pd.test-rig.nl"
+      upstreamPort: 443
+      upstreamPath: "/api/citizens"
 
 citizen:
   enabled: true

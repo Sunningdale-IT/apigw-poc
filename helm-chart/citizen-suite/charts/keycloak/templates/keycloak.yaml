@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+type: Opaque
+stringData:
+  admin-password: {{ .Values.env.adminPassword | quote }}
+  postgres-password: {{ .Values.postgres.password | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: keycloak
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: ["start-dev"]
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}
+          name: http
+        env:
+        - name: KEYCLOAK_ADMIN
+          value: {{ .Values.env.admin | quote }}
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: admin-password
+        - name: KC_DB
+          value: postgres
+        - name: KC_DB_URL_HOST
+          value: {{ .Values.postgres.host | default (printf "postgres.%s.svc.cluster.local" .Release.Namespace) | quote }}
+        - name: KC_DB_URL_PORT
+          value: {{ .Values.postgres.port | quote }}
+        - name: KC_DB_URL_DATABASE
+          value: {{ .Values.postgres.database | quote }}
+        - name: KC_DB_USERNAME
+          value: {{ .Values.postgres.username | quote }}
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-secret
+              key: postgres-password
+        - name: KC_HTTP_PORT
+          value: {{ .Values.service.targetPort | quote }}
+        - name: KC_PROXY
+          value: edge
+        - name: KC_HOSTNAME_STRICT
+          value: "false"
+        - name: KC_HTTP_ENABLED
+          value: "true"
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      name: http
+  selector:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}

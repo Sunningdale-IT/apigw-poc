@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/jimleitch/certosaur
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  host: certosaur.jim00.pd.test-rig.nl
+  tls:
+    enabled: true
+    secretName: certosaur-tls
+
+env:
+  djangoDebug: "false"
+  secretKey: CHANGE_ME
+  allowedHosts: certosaur.jim00.pd.test-rig.nl,certosaur,localhost,*
+  csrfTrustedOrigins: https://certosaur.jim00.pd.test-rig.nl
+
+postgres:
+  host: ""
+  port: "5432"
+  database: certosaur
+  username: certosaur
+  password: CHANGE_ME
+
+persistence:
+  data:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+  certs:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+imagePullSecrets: []
+podSecurityContext:
+  fsGroup: 1000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

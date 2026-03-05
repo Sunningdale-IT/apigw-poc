@@ -1,0 +1,14 @@
+# Ignore files containing real secrets
+secrets.yaml
+my-values.yaml
+*.secret.yaml
+*-secrets.yaml
+
+# Ignore Helm package files
+*.tgz
+
+# Ignore Helm lock files
+Chart.lock
+
+# Ignore Helm dependency charts
+charts/

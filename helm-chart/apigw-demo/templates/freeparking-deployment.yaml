@@ -1,0 +1,145 @@
+{{- if .Values.freeparking.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-freeparking
+  labels:
+    {{- include "apigw-demo.freeparking.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.freeparking.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.freeparking.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.freeparking.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until nc -z {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local 5432; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      - name: run-migrations
+        image: "{{ .Values.freeparking.image.repository }}:{{ .Values.freeparking.image.tag }}"
+        command: ['python', 'manage.py', 'migrate', '--noinput']
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.freeparking.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.freeparking.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.freeparking.env.djangoDebug | quote }}
+      - name: populate-movies
+        image: "{{ .Values.freeparking.image.repository }}:{{ .Values.freeparking.image.tag }}"
+        command:
+        - sh
+        - -c
+        - python manage.py populate_parking || echo "Populate skipped (data exists or non-fatal error)"
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.freeparking.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.freeparking.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.freeparking.env.djangoDebug | quote }}
+      containers:
+      - name: freeparking
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.freeparking.image.repository }}:{{ .Values.freeparking.image.tag }}"
+        imagePullPolicy: {{ .Values.freeparking.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.freeparking.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.freeparking.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.freeparking.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-freeparking-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.freeparking.env.djangoDebug | quote }}
+        - name: ALLOWED_HOSTS
+          value: {{ .Values.freeparking.env.allowedHosts | quote }}
+        - name: CSRF_TRUSTED_ORIGINS
+          value: {{ .Values.freeparking.env.csrfTrustedOrigins | quote }}
+        - name: CORS_ALLOW_ALL
+          value: {{ .Values.freeparking.env.corsAllowAll | quote }}
+        {{- if .Values.freeparking.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.freeparking.livenessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.freeparking.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.freeparking.livenessProbe.periodSeconds }}
+        {{- end }}
+        {{- if .Values.freeparking.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.freeparking.readinessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.freeparking.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.freeparking.readinessProbe.periodSeconds }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.freeparking.resources | nindent 10 }}
+{{- end }}

@@ -1,0 +1,39 @@
+{{- if and .Values.parkruns.enabled .Values.parkruns.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-parkruns
+  labels:
+    {{- include "apigw-demo.parkruns.labels" . | nindent 4 }}
+  {{- with .Values.parkruns.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.parkruns.ingress.className }}
+  {{- if .Values.parkruns.ingress.tls }}
+  tls:
+    {{- range .Values.parkruns.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.parkruns.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "apigw-demo.fullname" $ }}-parkruns
+                port:
+                  number: {{ $.Values.parkruns.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

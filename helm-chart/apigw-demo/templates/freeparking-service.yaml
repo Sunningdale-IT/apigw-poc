@@ -1,0 +1,17 @@
+{{- if .Values.freeparking.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-freeparking
+  labels:
+    {{- include "apigw-demo.freeparking.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.freeparking.service.type }}
+  ports:
+    - port: {{ .Values.freeparking.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apigw-demo.freeparking.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,145 @@
+{{- if .Values.moviezzz.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apigw-demo.fullname" . }}-moviezzz
+  labels:
+    {{- include "apigw-demo.moviezzz.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.moviezzz.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw-demo.moviezzz.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw-demo.moviezzz.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "apigw-demo.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL database to be ready..."
+          until nc -z {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local 5432; do
+            echo "Database not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Database is ready!"
+          sleep 5
+      - name: run-migrations
+        image: "{{ .Values.moviezzz.image.repository }}:{{ .Values.moviezzz.image.tag }}"
+        command: ['python', 'manage.py', 'migrate', '--noinput']
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.moviezzz.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.moviezzz.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.moviezzz.env.djangoDebug | quote }}
+      - name: populate-movies
+        image: "{{ .Values.moviezzz.image.repository }}:{{ .Values.moviezzz.image.tag }}"
+        command:
+        - sh
+        - -c
+        - python manage.py populate_movies || echo "Populate skipped (data exists or non-fatal error)"
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.moviezzz.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.moviezzz.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.moviezzz.env.djangoDebug | quote }}
+      containers:
+      - name: moviezzz
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.moviezzz.image.repository }}:{{ .Values.moviezzz.image.tag }}"
+        imagePullPolicy: {{ .Values.moviezzz.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.moviezzz.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: POSTGRES_HOST
+          value: {{ include "apigw-demo.fullname" . }}-postgres.{{ .Release.Namespace }}.svc.cluster.local
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.databases.moviezzz.name | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.databases.moviezzz.username | quote }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: postgres-password
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "apigw-demo.fullname" . }}-moviezzz-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: {{ .Values.moviezzz.env.djangoDebug | quote }}
+        - name: ALLOWED_HOSTS
+          value: {{ .Values.moviezzz.env.allowedHosts | quote }}
+        - name: CSRF_TRUSTED_ORIGINS
+          value: {{ .Values.moviezzz.env.csrfTrustedOrigins | quote }}
+        - name: CORS_ALLOW_ALL
+          value: {{ .Values.moviezzz.env.corsAllowAll | quote }}
+        {{- if .Values.moviezzz.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.moviezzz.livenessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.moviezzz.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.moviezzz.livenessProbe.periodSeconds }}
+        {{- end }}
+        {{- if .Values.moviezzz.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.moviezzz.readinessProbe.httpGet.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.moviezzz.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.moviezzz.readinessProbe.periodSeconds }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.moviezzz.resources | nindent 10 }}
+{{- end }}

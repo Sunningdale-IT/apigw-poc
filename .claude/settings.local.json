@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(./scripts/test-services.sh:*)",
+      "Bash(kubectl get:*)",
+      "Bash(helm upgrade:*)",
+      "Bash(kubectl:*)",
+      "Bash(helm uninstall:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(pip3 show:*)",
+      "Bash(git filter-repo:*)",
+      "Bash(git:*)",
+      "WebSearch",
+      "Bash(holmes ask:*)",
+      "Bash(k9s info:*)",
+      "Bash(holmes:*)",
+      "Bash(pip show holmes-ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.litellm.ai)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(echo:*)",
+      "WebFetch(domain:holmesgpt.dev)",
+      "WebFetch(domain:docs.robusta.dev)",
+      "Bash(pip show:*)",
+      "Bash(xargs python3:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}
