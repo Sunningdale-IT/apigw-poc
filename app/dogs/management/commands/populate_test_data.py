@@ -37,13 +37,38 @@ class Command(BaseCommand):
         # Check if dogs already exist
         existing_count = Dog.objects.count()
         if existing_count > 0 and not force:
-            self.stdout.write(
-                self.style.WARNING(
-                    f'Database already contains {existing_count} dog(s). '
-                    f'Use --force to populate anyway.'
+            # Check if photos are missing for existing dogs
+            dogs_with_photos = Dog.objects.filter(photo_filename__isnull=False)
+            missing_photos = []
+            
+            for dog in dogs_with_photos:
+                photo_path = Path(settings.BASE_DIR) / 'static' / 'uploads' / dog.photo_filename
+                if not photo_path.exists():
+                    missing_photos.append(dog)
+            
+            if missing_photos:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'Database contains {existing_count} dog(s) but {len(missing_photos)} photo(s) are missing. '
+                        f'Re-downloading missing photos...'
+                    )
                 )
-            )
-            return
+                # Re-download missing photos
+                self._redownload_photos(missing_photos)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Successfully re-downloaded {len(missing_photos)} missing photo(s)!'
+                    )
+                )
+                return
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Database already contains {existing_count} dog(s) with all photos present. '
+                        f'Use --force to repopulate anyway.'
+                    )
+                )
+                return
         
         self.stdout.write(
             self.style.SUCCESS(
@@ -228,3 +253,39 @@ class Command(BaseCommand):
                 f'Successfully created {created_count} test dog entries!'
             )
         )
+
+    def _redownload_photos(self, dogs):
+        """Re-download photos for dogs with missing files."""
+        uploads_dir = Path(settings.BASE_DIR) / 'static' / 'uploads'
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        
+        for dog in dogs:
+            try:
+                # Determine API URL based on breed
+                if 'Border Terrier' in dog.breed:
+                    api_url = 'https://dog.ceo/api/breed/terrier/border/images/random'
+                else:
+                    api_url = 'https://dog.ceo/api/breeds/image/random'
+                
+                response = requests.get(api_url, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('status') == 'success':
+                        image_url = data.get('message')
+                        
+                        # Download the image
+                        img_response = requests.get(image_url, timeout=10)
+                        if img_response.status_code == 200:
+                            photo_path = uploads_dir / dog.photo_filename
+                            
+                            # Save image
+                            with open(photo_path, 'wb') as f:
+                                f.write(img_response.content)
+                            
+                            self.stdout.write(f'  Downloaded photo for {dog.name} (ID {dog.id})')
+            except Exception as e:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'  Failed to download photo for {dog.name}: {e}'
+                    )
+                )

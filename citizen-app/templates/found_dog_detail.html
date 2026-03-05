@@ -27,13 +27,13 @@
     {% elif dog %}
     <div class="row">
         <div class="col-lg-6 mb-4">
-            {% if dog.photo_download_url %}
+            {% if dog.photo_url %}
             <div class="card">
-                <img src="{{ dogcatcher_url }}{{ dog.photo_download_url }}" class="card-img-top" 
+                <img src="{{ dog.photo_url }}" class="card-img-top" 
                      alt="Photo of {{ dog.name }}" style="max-height: 500px; object-fit: cover;"
                      onerror="this.src='https://via.placeholder.com/600x400?text=No+Photo'">
                 <div class="card-footer">
-                    <a href="{{ dogcatcher_url }}{{ dog.photo_download_url }}" class="btn btn-outline-primary btn-sm" download>
+                    <a href="{{ dog.photo_url }}" class="btn btn-outline-primary btn-sm" download>
                         <i class="bi bi-download"></i> Download Photo
                     </a>
                 </div>

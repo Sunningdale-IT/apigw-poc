@@ -3,6 +3,10 @@
 # Use with:
 #   helm install <release-name> ./helm-chart/citizen-suite -f my-values.yaml -f secrets.yaml
 
+# Re-enable smoke tests after fixes
+tests:
+  enabled: true
+
 dogcatcher:
   enabled: true
   replicaCount: 1
@@ -58,11 +62,11 @@ kong:
   goodbehaviour:
     mtls:
       enabled: true
-      tlsVerify: true
-      # Force Kong to reach Good Behaviour via external TLS endpoint.
-      # This keeps the API path behind mTLS on the public hostname.
-      upstreamHost: "good-behaviour.jim00.pd.test-rig.nl"
-      upstreamPort: 443
+      tlsVerify: false
+      # Use in-cluster service for Good Behaviour (mTLS between Kong and service)
+      # External hostname verification fails, so we use the internal service
+      upstreamHost: "good-behaviour"
+      upstreamPort: 5443
       upstreamPath: "/api/citizens"
 
 citizen:

@@ -20,13 +20,20 @@ def _rewrite_photo_urls(dog):
     The dogcatcher serializer builds URLs from the Host header it receives,
     which is the internal Kong service name when called pod-to-pod.  We swap
     that out for the externally reachable hostname here.
+    
+    Also handles relative URLs by converting them to absolute URLs using
+    DOGCATCHER_PUBLIC_URL.
     """
     public_base = settings.DOGCATCHER_PUBLIC_URL.rstrip('/')
     for field in ('photo_url', 'photo_download_url'):
         url = dog.get(field)
         if url:
-            # Replace everything up to (but not including) the path component
-            dog[field] = re.sub(r'^https?://[^/]+', public_base, url)
+            # If it's a relative URL (starts with /), prepend the public base
+            if url.startswith('/'):
+                dog[field] = public_base + url
+            else:
+                # Replace everything up to (but not including) the path component
+                dog[field] = re.sub(r'^https?://[^/]+', public_base, url)
     return dog
 
 
