@@ -1,0 +1,6 @@
+# Runtime state of the local container: SQLite database and issued certificates.
+# Private keys live here. Never commit.
+/data/
+/certificates_storage/
+/staticfiles/
+/media/
