@@ -2,7 +2,8 @@
 Django>=4.2,<5.0
 
 # Cryptography library for certificate generation
-cryptography>=41.0.0
+# >=42 is required: cert_utils uses not_valid_before_utc / not_valid_after_utc
+cryptography>=42.0.0
 
 # For serving static files in production
 whitenoise>=6.6.0

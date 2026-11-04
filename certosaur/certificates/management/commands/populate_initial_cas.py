@@ -58,8 +58,8 @@ class Command(BaseCommand):
                 locality='San Francisco',
                 certificate_pem=serialize_certificate(alpha_cert).decode('utf-8'),
                 private_key_pem=serialize_private_key(alpha_key).decode('utf-8'),
-                valid_from=alpha_cert.not_valid_before,
-                valid_until=alpha_cert.not_valid_after,
+                valid_from=alpha_cert.not_valid_before_utc,
+                valid_until=alpha_cert.not_valid_after_utc,
                 is_root=True,
                 parent_ca=None,
             )
@@ -90,8 +90,8 @@ class Command(BaseCommand):
                 locality='San Francisco',
                 certificate_pem=serialize_certificate(commercial_cert).decode('utf-8'),
                 private_key_pem=serialize_private_key(commercial_key).decode('utf-8'),
-                valid_from=commercial_cert.not_valid_before,
-                valid_until=commercial_cert.not_valid_after,
+                valid_from=commercial_cert.not_valid_before_utc,
+                valid_until=commercial_cert.not_valid_after_utc,
                 is_root=False,
                 parent_ca=alpha_ca,
             )
@@ -122,8 +122,8 @@ class Command(BaseCommand):
                 locality='San Francisco',
                 certificate_pem=serialize_certificate(government_cert).decode('utf-8'),
                 private_key_pem=serialize_private_key(government_key).decode('utf-8'),
-                valid_from=government_cert.not_valid_before,
-                valid_until=government_cert.not_valid_after,
+                valid_from=government_cert.not_valid_before_utc,
+                valid_until=government_cert.not_valid_after_utc,
                 is_root=False,
                 parent_ca=alpha_ca,
             )

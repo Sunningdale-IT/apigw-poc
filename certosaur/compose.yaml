@@ -1,0 +1,32 @@
+# Standalone Certosaur: a private test CA on your laptop.
+#   docker compose up -d --build
+#   open http://localhost:5003/  (login admin / admin123 unless overridden)
+# CA data lives in ./data and ./certificates_storage (gitignored) and survives
+# restarts, rebuilds and reboots. To wipe it and re-seed once:
+#   CERTOSAUR_CLEAN_START=true docker compose up -d
+services:
+  certosaur:
+    build: .
+    image: certosaur:local
+    container_name: certosaur
+    ports:
+      - "${CERTOSAUR_PORT:-5003}:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${CERTOSAUR_SECRET_KEY:-certosaur-local-dev-secret}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      DJANGO_ALLOWED_HOSTS: ${CERTOSAUR_ALLOWED_HOSTS:-localhost,127.0.0.1,certosaur,host.docker.internal}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${CERTOSAUR_CSRF_TRUSTED_ORIGINS:-http://localhost:5003,http://127.0.0.1:5003}
+      CERTOSAUR_ADMIN_USER: ${CERTOSAUR_ADMIN_USER:-admin}
+      CERTOSAUR_ADMIN_PASSWORD: ${CERTOSAUR_ADMIN_PASSWORD:-admin123}
+      CERTOSAUR_SEED_CAS: ${CERTOSAUR_SEED_CAS:-true}
+      CERTOSAUR_CLEAN_START: ${CERTOSAUR_CLEAN_START:-false}
+    volumes:
+      - ${CERTOSAUR_DATA_DIR:-./data}:/app/data
+      - ${CERTOSAUR_CERTS_DIR:-./certificates_storage}:/app/certificates_storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

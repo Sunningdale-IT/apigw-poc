@@ -5,7 +5,7 @@ Certosaur - Prehistoric-powered certificate generation! 🦕
 
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from cryptography import x509
@@ -100,7 +100,7 @@ def generate_ca_certificate(
         locality=locality,
     )
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # If no parent, this is a root CA (self-signed)
     if parent_cert is None or parent_key is None:
@@ -182,7 +182,7 @@ def generate_server_certificate(
         locality=locality,
     )
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(subject)
@@ -275,7 +275,7 @@ def generate_client_certificate(
         email=email,
     )
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(subject)

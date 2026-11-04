@@ -15,7 +15,13 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-key-change-in-produ
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
+# Needed for POST (login, create, revoke) when the portal is reached on a non-default port
+# or through a proxy, e.g. http://localhost:5003 or https://certosaur.example.com
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -61,7 +67,6 @@ WSGI_APPLICATION = 'certosaur_project.wsgi.application'
 
 # Database
 # Use /app/data directory for persistent storage in Docker
-import os
 DATA_DIR = BASE_DIR / 'data'
 if not DATA_DIR.exists():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
